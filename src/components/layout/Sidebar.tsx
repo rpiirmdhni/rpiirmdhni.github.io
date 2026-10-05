@@ -12,7 +12,7 @@ export default function Sidebar({ isOpen }: SidebarProps) {
         >
             <div className="relative select-none rounded-2xl overflow-hidden aspect-square w-full shrink-0">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/assets/img/profile.jpg" alt="Rafie Restu Ramadhani" className="w-full h-full object-[50%_15%] object-cover" />
+                <img src="assets/img/profile.jpg" alt="Rafie Restu Ramadhani" className="w-full h-full object-[50%_15%] object-cover" />
                 <div className="absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-taupe-950/20 to-transparent"></div>
                 <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-taupe-950/20 to-transparent"></div>
                 <ArrowUpRightIcon />
