@@ -1,0 +1,23 @@
+# Rafie Restu Ramadhani (rpiirmdhni)
+> Software Developer, AI Explorer & Information System Student at Gunadarma University.
+
+## About
+Rafie Restu Ramadhani is a developer and technology enthusiast based in Tangerang, Indonesia. He is currently an Information System student at Gunadarma University, Founder & CEO at Meluna, and member of GDGoC @ Gunadarma University.
+
+## Core Technical Skills
+- Programming Languages & Frameworks: JavaScript, TypeScript, Node.js, React, Next.js, Express.js, Expo, PHP, Laravel, Python, Fastify, TailwindCSS, shadcn/ui.
+- Databases & Cloud: SQLite, Azure.
+- Tools & Design: Figma, Canva, Capcut, Remotion, VS Code, Antigravity, Claude Code, Cursor.
+
+## Featured Projects
+- LiteSpeak: Zero-setup, open-source IoT platform combining MQTT Broker, REST API, and native AI (MCP) integration. (https://github.com/rpiirmdhni/LiteSpeak)
+- ECOTRA: IoT and AI-based system to monitor chili plant conditions and detect diseases via mobile app (PKM-KC).
+- Nineteen Million (AI) Jobs (NMJ): Open-source dashboard for creating, configuring, and managing hierarchical AI agent workforces. (https://github.com/rpiirmdhni/nmj)
+- My Gunadarma: Laravel-based academic web application featuring QR code attendance and e-library. (https://github.com/rpiirmdhni/my-gunadarma)
+
+## Contact & Social Links
+- Portfolio Website: https://rpiirmdhni.github.io
+- GitHub: https://github.com/rpiirmdhni
+- LinkedIn: https://linkedin.com/in/rpiirmdhni
+- Email: rafieresturamadhani@gmail.com
+- Location: Tangerang, Indonesia
