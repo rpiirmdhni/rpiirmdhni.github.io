@@ -32,7 +32,7 @@ export type Project = {
 export const projects: Project[] = [
     {
         title: "LiteSpeak",
-        image: "/assets/img/projects/litespeak.png",
+        image: "assets/img/projects/litespeak.png",
         description: "LiteSpeak is a zero-setup, open-source IoT platform combining an MQTT Broker, REST API, and native AI (MCP) integration.",
         links: [
             { type: "github", href: "https://github.com/rpiirmdhni/LiteSpeak", label: "View on Github" },
@@ -41,13 +41,13 @@ export const projects: Project[] = [
     },
     {
         title: "ECOTRA Mobile App",
-        image: "/assets/img/projects/ecotra.png",
+        image: "assets/img/projects/ecotra.png",
         description: "ECOTRA is a PKM-KC project that develops an IoT- and AI-based system to monitor chili plant conditions, detect diseases, and provide recommended actions such as spraying through a mobile application.",
         badge: "Private",
     },
     {
         title: "ECOTRA Brand Guidelines",
-        image: "/assets/img/projects/ecotra-brand.png",
+        image: "assets/img/projects/ecotra-brand.png",
         description: "ECOTRA is a PKM-KC project that develops an IoT- and AI-based system to monitor chili plant conditions, detect diseases, and provide recommended actions such as spraying through a mobile application.",
         links: [
             { type: "figma", href: "https://www.figma.com/design/y0oIzAtuXkajTUnXwtrItu/ECOTRA---Brand-Assets?node-id=0-1&t=T0Crv0qH5QTFJFou-1", label: "View on Figma" },
@@ -55,7 +55,7 @@ export const projects: Project[] = [
     },
     {
         title: "Nineteen Million (AI) Jobs - NMJ",
-        image: "/assets/img/projects/nmj.png",
+        image: "assets/img/projects/nmj.png",
         description: "Nineteen Million (AI) Jobs is an open-source dashboard for creating, configuring, and managing hierarchical AI agent workforces.",
         links: [
             { type: "github", href: "https://github.com/rpiirmdhni/nmj", label: "View on Github" },
@@ -63,7 +63,7 @@ export const projects: Project[] = [
     },
     {
         title: "My Gunadarma",
-        image: "/assets/img/projects/myug.png",
+        image: "assets/img/projects/myug.png",
         description: "My Gunadarma is a Laravel-based academic web application featuring QR code attendance and an e-library, developed by Group 4 for the Midterm Project and Exam in the KSTSI C course at Gunadarma University.",
         links: [
             { type: "github", href: "https://github.com/rpiirmdhni/my-gunadarma", label: "View on Github" },
