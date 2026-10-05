@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+/*
+    Ported 1:1 from the <style> block in the original index.html.
+    These rules are intentionally left unlayered (same as the original),
+    so they keep the exact same precedence over Tailwind's layered styles.
+*/
+body {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+}
+h1, h2, h3, h4, h5, h6 {
+    font-family: 'Bricolage Grotesque', sans-serif;
+}
+/*
+    Display              : text-[4rem]
+    H1                   : text-5xl
+    H2                   : text-4xl
+    H3                   : text-3xl
+    H4                   : text-2xl
+    H5                   : text-xl
+    H6 / Large Text      : text-lg
+    Body                 : text-base
+    Small                : text-sm
+    Caption              : text-xs
+*/
