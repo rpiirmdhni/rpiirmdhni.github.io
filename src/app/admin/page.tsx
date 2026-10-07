@@ -1422,21 +1422,16 @@ export default function AdminDashboard() {
 
             {/* Custom Image Rename Modal */}
             {uploadModal.isOpen && (
-                <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
-                    <div className="bg-white border border-slate-200 rounded-xl shadow-2xl max-w-md w-full overflow-hidden">
-                        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-slate-50/50">
-                            <div className="flex items-center gap-2.5">
-                                <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg">
-                                    <Upload className="w-4 h-4" />
-                                </div>
-                                <div>
-                                    <h3 className="font-semibold text-slate-900 text-sm">Rename Upload File</h3>
-                                    <p className="text-xs text-slate-500">Set target filename before uploading to GitHub</p>
-                                </div>
+                <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+                    <div className="bg-white border border-slate-200 rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+                            <div>
+                                <h3 className="font-bold text-slate-900 text-sm">Rename Upload File</h3>
+                                <p className="text-xs text-slate-500 mt-0.5">Tentukan nama file sebelum di-upload ke GitHub</p>
                             </div>
                             <button
                                 onClick={() => setUploadModal({ isOpen: false, file: null, originalExt: ".png", filename: "", callback: null })}
-                                className="p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
                             >
                                 <X className="w-4 h-4" />
                             </button>
@@ -1447,43 +1442,42 @@ export default function AdminDashboard() {
                                 e.preventDefault();
                                 executeFileUpload();
                             }}
-                            className="p-5 space-y-4"
+                            className="p-6 space-y-4"
                         >
                             <div className="space-y-2">
-                                <label className="text-xs font-semibold text-slate-700">Filename</label>
+                                <label className="text-xs font-semibold text-slate-700">Nama File</label>
                                 <div className="flex items-center gap-2">
                                     <Input
                                         type="text"
                                         value={uploadModal.filename}
                                         onChange={(e) => setUploadModal({ ...uploadModal, filename: e.target.value })}
                                         placeholder="e.g. project-preview"
-                                        className="bg-white border-slate-300 text-slate-900 text-sm font-medium focus:ring-2 focus:ring-indigo-500"
+                                        className="bg-white border-slate-300 text-slate-900 text-sm font-medium focus:ring-2 focus:ring-slate-900 focus:border-slate-900"
                                         autoFocus
                                     />
-                                    <Badge variant="outline" className="px-2.5 py-2 text-xs font-mono bg-slate-100 text-slate-700 border-slate-200 shrink-0">
+                                    <Badge variant="outline" className="px-2.5 py-2 text-xs font-mono bg-slate-100 text-slate-800 border-slate-200 shrink-0 font-semibold">
                                         {uploadModal.originalExt}
                                     </Badge>
                                 </div>
-                                <p className="text-[11px] text-slate-500 leading-tight">
-                                    Path preview: <code className="bg-slate-100 px-1 py-0.5 rounded text-slate-700 font-mono text-[10px]">public/assets/img/projects/{(uploadModal.filename.trim() || "image").toLowerCase().replace(/[^a-z0-9._-]/g, "-") + uploadModal.originalExt}</code>
+                                <p className="text-[11px] text-slate-500 leading-tight pt-1">
+                                    Path target: <code className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-800 font-mono text-[10px] font-medium">public/assets/img/projects/{(uploadModal.filename.trim() || "image").toLowerCase().replace(/[^a-z0-9._-]/g, "-") + uploadModal.originalExt}</code>
                                 </p>
                             </div>
 
-                            <div className="flex items-center justify-end gap-2 pt-2">
+                            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
                                 <Button
                                     type="button"
                                     variant="outline"
                                     onClick={() => setUploadModal({ isOpen: false, file: null, originalExt: ".png", filename: "", callback: null })}
-                                    className="text-xs font-medium border-slate-300 text-slate-700 hover:bg-slate-50 cursor-pointer"
+                                    className="text-xs font-medium border-slate-300 text-slate-700 hover:bg-slate-100 cursor-pointer"
                                 >
-                                    Cancel
+                                    Batal
                                 </Button>
                                 <Button
                                     type="submit"
-                                    className="text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm gap-1.5 cursor-pointer"
+                                    className="text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white shadow-sm cursor-pointer"
                                 >
-                                    <Upload className="w-3.5 h-3.5" />
-                                    <span>Confirm & Upload</span>
+                                    Confirm & Upload
                                 </Button>
                             </div>
                         </form>
