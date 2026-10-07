@@ -3,8 +3,10 @@
 import { useEffect, useState } from "react";
 import {
     AlertCircle,
+    ArrowDown,
     ArrowLeft,
     ArrowRight,
+    ArrowUp,
     BarChart3,
     Briefcase,
     CheckCircle2,
@@ -96,6 +98,16 @@ export default function AdminDashboard() {
         message: string;
         userLogin?: string;
     }>({ status: "idle", message: "" });
+
+    // Reorder helper for items and categories
+    const moveItem = <T,>(list: T[], index: number, direction: "up" | "down"): T[] => {
+        const targetIndex = direction === "up" ? index - 1 : index + 1;
+        if (targetIndex < 0 || targetIndex >= list.length) return list;
+        const copy = [...list];
+        const [movedItem] = copy.splice(index, 1);
+        copy.splice(targetIndex, 0, movedItem);
+        return copy;
+    };
 
     // Load credentials on mount and run validation
     useEffect(() => {
@@ -675,15 +687,37 @@ export default function AdminDashboard() {
                                     <div key={idx} className="border border-slate-200 rounded-xl p-5 bg-slate-50/50 flex flex-col gap-4">
                                         <div className="flex justify-between items-center border-b border-slate-200 pb-2">
                                             <span className="text-xs font-mono font-bold text-slate-400">PROJECT #{idx + 1}</span>
-                                            <Button
-                                                size="sm"
-                                                variant="ghost"
-                                                onClick={() => setData({ ...data, projects: data.projects.filter((_, i) => i !== idx) })}
-                                                className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50 h-7 gap-1"
-                                            >
-                                                <Trash2 className="w-3.5 h-3.5" />
-                                                <span>Delete</span>
-                                            </Button>
+                                            <div className="flex items-center gap-1">
+                                                <Button
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    disabled={idx === 0}
+                                                    onClick={() => setData({ ...data, projects: moveItem(data.projects, idx, "up") })}
+                                                    className="h-7 w-7 p-0 text-slate-500 hover:text-slate-900 disabled:opacity-30 cursor-pointer"
+                                                    title="Move Up"
+                                                >
+                                                    <ArrowUp className="w-3.5 h-3.5" />
+                                                </Button>
+                                                <Button
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    disabled={idx === data.projects.length - 1}
+                                                    onClick={() => setData({ ...data, projects: moveItem(data.projects, idx, "down") })}
+                                                    className="h-7 w-7 p-0 text-slate-500 hover:text-slate-900 disabled:opacity-30 cursor-pointer"
+                                                    title="Move Down"
+                                                >
+                                                    <ArrowDown className="w-3.5 h-3.5" />
+                                                </Button>
+                                                <Button
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    onClick={() => setData({ ...data, projects: data.projects.filter((_, i) => i !== idx) })}
+                                                    className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50 h-7 gap-1"
+                                                >
+                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                    <span>Delete</span>
+                                                </Button>
+                                            </div>
                                         </div>
 
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -869,15 +903,37 @@ export default function AdminDashboard() {
                                     <div key={idx} className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 flex flex-col gap-3">
                                         <div className="flex justify-between items-center">
                                             <span className="text-xs font-mono font-bold text-slate-400">ENTRY #{idx + 1}</span>
-                                            <Button
-                                                size="sm"
-                                                variant="ghost"
-                                                onClick={() => setData({ ...data, experiences: data.experiences.filter((_, i) => i !== idx) })}
-                                                className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50 h-7 gap-1"
-                                            >
-                                                <Trash2 className="w-3.5 h-3.5" />
-                                                <span>Delete</span>
-                                            </Button>
+                                            <div className="flex items-center gap-1">
+                                                <Button
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    disabled={idx === 0}
+                                                    onClick={() => setData({ ...data, experiences: moveItem(data.experiences, idx, "up") })}
+                                                    className="h-7 w-7 p-0 text-slate-500 hover:text-slate-900 disabled:opacity-30 cursor-pointer"
+                                                    title="Move Up"
+                                                >
+                                                    <ArrowUp className="w-3.5 h-3.5" />
+                                                </Button>
+                                                <Button
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    disabled={idx === data.experiences.length - 1}
+                                                    onClick={() => setData({ ...data, experiences: moveItem(data.experiences, idx, "down") })}
+                                                    className="h-7 w-7 p-0 text-slate-500 hover:text-slate-900 disabled:opacity-30 cursor-pointer"
+                                                    title="Move Down"
+                                                >
+                                                    <ArrowDown className="w-3.5 h-3.5" />
+                                                </Button>
+                                                <Button
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    onClick={() => setData({ ...data, experiences: data.experiences.filter((_, i) => i !== idx) })}
+                                                    className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50 h-7 gap-1"
+                                                >
+                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                    <span>Delete</span>
+                                                </Button>
+                                            </div>
                                         </div>
 
                                         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
@@ -974,15 +1030,37 @@ export default function AdminDashboard() {
                                     <div key={idx} className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 flex flex-col gap-3">
                                         <div className="flex justify-between items-center">
                                             <span className="text-xs font-mono font-bold text-slate-400">ENTRY #{idx + 1}</span>
-                                            <Button
-                                                size="sm"
-                                                variant="ghost"
-                                                onClick={() => setData({ ...data, educations: data.educations.filter((_, i) => i !== idx) })}
-                                                className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50 h-7 gap-1"
-                                            >
-                                                <Trash2 className="w-3.5 h-3.5" />
-                                                <span>Delete</span>
-                                            </Button>
+                                            <div className="flex items-center gap-1">
+                                                <Button
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    disabled={idx === 0}
+                                                    onClick={() => setData({ ...data, educations: moveItem(data.educations, idx, "up") })}
+                                                    className="h-7 w-7 p-0 text-slate-500 hover:text-slate-900 disabled:opacity-30 cursor-pointer"
+                                                    title="Move Up"
+                                                >
+                                                    <ArrowUp className="w-3.5 h-3.5" />
+                                                </Button>
+                                                <Button
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    disabled={idx === data.educations.length - 1}
+                                                    onClick={() => setData({ ...data, educations: moveItem(data.educations, idx, "down") })}
+                                                    className="h-7 w-7 p-0 text-slate-500 hover:text-slate-900 disabled:opacity-30 cursor-pointer"
+                                                    title="Move Down"
+                                                >
+                                                    <ArrowDown className="w-3.5 h-3.5" />
+                                                </Button>
+                                                <Button
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    onClick={() => setData({ ...data, educations: data.educations.filter((_, i) => i !== idx) })}
+                                                    className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50 h-7 gap-1"
+                                                >
+                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                    <span>Delete</span>
+                                                </Button>
+                                            </div>
                                         </div>
 
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -1072,15 +1150,37 @@ export default function AdminDashboard() {
                                                 }}
                                                 className="bg-white border-slate-300 text-slate-900 font-bold text-xs w-60"
                                             />
-                                            <Button
-                                                size="sm"
-                                                variant="ghost"
-                                                onClick={() => setData({ ...data, skillGroups: data.skillGroups.filter((_, i) => i !== sIdx) })}
-                                                className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50 h-7 gap-1"
-                                            >
-                                                <Trash2 className="w-3.5 h-3.5" />
-                                                <span>Delete Category</span>
-                                            </Button>
+                                            <div className="flex items-center gap-1">
+                                                <Button
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    disabled={sIdx === 0}
+                                                    onClick={() => setData({ ...data, skillGroups: moveItem(data.skillGroups, sIdx, "up") })}
+                                                    className="h-7 w-7 p-0 text-slate-500 hover:text-slate-900 disabled:opacity-30 cursor-pointer"
+                                                    title="Move Category Up"
+                                                >
+                                                    <ArrowUp className="w-3.5 h-3.5" />
+                                                </Button>
+                                                <Button
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    disabled={sIdx === data.skillGroups.length - 1}
+                                                    onClick={() => setData({ ...data, skillGroups: moveItem(data.skillGroups, sIdx, "down") })}
+                                                    className="h-7 w-7 p-0 text-slate-500 hover:text-slate-900 disabled:opacity-30 cursor-pointer"
+                                                    title="Move Category Down"
+                                                >
+                                                    <ArrowDown className="w-3.5 h-3.5" />
+                                                </Button>
+                                                <Button
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    onClick={() => setData({ ...data, skillGroups: data.skillGroups.filter((_, i) => i !== sIdx) })}
+                                                    className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50 h-7 gap-1"
+                                                >
+                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                    <span>Delete Category</span>
+                                                </Button>
+                                            </div>
                                         </div>
 
                                         <div className="flex flex-col gap-1.5">
@@ -1160,12 +1260,31 @@ export default function AdminDashboard() {
                                             />
                                             <span className="text-xs font-semibold text-slate-500">%</span>
                                         </div>
-                                        <button
-                                            onClick={() => setData({ ...data, languages: data.languages.filter((_, i) => i !== idx)} )}
-                                            className="p-1.5 text-slate-400 hover:text-red-600"
-                                        >
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
+                                        <div className="flex items-center gap-1">
+                                            <button
+                                                disabled={idx === 0}
+                                                onClick={() => setData({ ...data, languages: moveItem(data.languages, idx, "up") })}
+                                                className="p-1.5 text-slate-400 hover:text-slate-700 disabled:opacity-30 cursor-pointer"
+                                                title="Move Up"
+                                            >
+                                                <ArrowUp className="w-3.5 h-3.5" />
+                                            </button>
+                                            <button
+                                                disabled={idx === data.languages.length - 1}
+                                                onClick={() => setData({ ...data, languages: moveItem(data.languages, idx, "down") })}
+                                                className="p-1.5 text-slate-400 hover:text-slate-700 disabled:opacity-30 cursor-pointer"
+                                                title="Move Down"
+                                            >
+                                                <ArrowDown className="w-3.5 h-3.5" />
+                                            </button>
+                                            <button
+                                                onClick={() => setData({ ...data, languages: data.languages.filter((_, i) => i !== idx)} )}
+                                                className="p-1.5 text-slate-400 hover:text-red-600 cursor-pointer"
+                                                title="Delete"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </div>
                                     </div>
                                 ))}
                             </CardContent>
@@ -1184,7 +1303,31 @@ export default function AdminDashboard() {
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     {data.aboutStats.map((stat, idx) => (
                                         <div key={idx} className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 flex flex-col gap-3">
-                                            <span className="text-xs font-mono font-bold text-slate-400">METRIC #{idx + 1}</span>
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-xs font-mono font-bold text-slate-400">METRIC #{idx + 1}</span>
+                                                <div className="flex items-center gap-1">
+                                                    <Button
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        disabled={idx === 0}
+                                                        onClick={() => setData({ ...data, aboutStats: moveItem(data.aboutStats, idx, "up") })}
+                                                        className="h-6 w-6 p-0 text-slate-500 hover:text-slate-900 disabled:opacity-30 cursor-pointer"
+                                                        title="Move Up"
+                                                    >
+                                                        <ArrowUp className="w-3 h-3" />
+                                                    </Button>
+                                                    <Button
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        disabled={idx === data.aboutStats.length - 1}
+                                                        onClick={() => setData({ ...data, aboutStats: moveItem(data.aboutStats, idx, "down") })}
+                                                        className="h-6 w-6 p-0 text-slate-500 hover:text-slate-900 disabled:opacity-30 cursor-pointer"
+                                                        title="Move Down"
+                                                    >
+                                                        <ArrowDown className="w-3 h-3" />
+                                                    </Button>
+                                                </div>
+                                            </div>
                                             <div className="flex flex-col gap-1.5">
                                                 <label className="text-xs font-semibold text-slate-700">Display Value</label>
                                                 <Input
