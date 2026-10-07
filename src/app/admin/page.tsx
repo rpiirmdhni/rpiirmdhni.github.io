@@ -1,6 +1,25 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import {
+    AlertCircle,
+    ArrowLeft,
+    BarChart3,
+    Briefcase,
+    CheckCircle2,
+    FolderKanban,
+    Globe,
+    GraduationCap,
+    Key,
+    Loader2,
+    Plus,
+    Save,
+    ShieldCheck,
+    Trash2,
+    Upload,
+    Wrench,
+    X,
+} from "lucide-react";
 import initialPortfolioData from "@/data/portfolio.json";
 
 type ProjectLink = {
@@ -75,7 +94,7 @@ export default function AdminPage() {
         localStorage.setItem("cms_github_token", token.trim());
         localStorage.setItem("cms_github_repo", repo.trim());
         setIsConfigured(true);
-        setStatus({ type: "success", message: "GitHub settings saved locally!" });
+        setStatus({ type: "success", message: "GitHub authentication settings saved!" });
     };
 
     const handleDisconnect = () => {
@@ -85,7 +104,6 @@ export default function AdminPage() {
         setStatus({ type: "idle", message: "" });
     };
 
-    // --- Helper for UTF-8 Base64 Encoding ---
     const utf8ToBase64 = (str: string) => {
         return btoa(
             encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, (_, p1) =>
@@ -94,7 +112,6 @@ export default function AdminPage() {
         );
     };
 
-    // --- Helper to Upload Image to GitHub Repository ---
     const handleFileUpload = async (file: File, callback: (url: string) => void) => {
         if (!token) return alert("Please configure your GitHub Token first.");
         setImageUploadStatus(`Uploading ${file.name}...`);
@@ -107,7 +124,6 @@ export default function AdminPage() {
                 const cleanFileName = file.name.toLowerCase().replace(/[^a-z0-9._-]/g, "-");
                 const path = `public/assets/img/projects/${cleanFileName}`;
 
-                // Check if file exists to get SHA
                 let sha: string | undefined;
                 try {
                     const checkRes = await fetch(`https://api.github.com/repos/${repo}/contents/${path}`, {
@@ -142,7 +158,7 @@ export default function AdminPage() {
 
                 const publicUrl = `/assets/img/projects/${cleanFileName}`;
                 callback(publicUrl);
-                setImageUploadStatus(`Uploaded! Saved to ${publicUrl}`);
+                setImageUploadStatus(`Successfully uploaded to ${publicUrl}`);
             };
         } catch (err: unknown) {
             const error = err as Error;
@@ -150,7 +166,6 @@ export default function AdminPage() {
         }
     };
 
-    // --- Save All Data to GitHub ---
     const handleCommitToGitHub = async () => {
         if (!token) return alert("Please enter and save your GitHub Token first.");
 
@@ -170,7 +185,7 @@ export default function AdminPage() {
             const currentFileData = await getRes.json();
             const currentSha = currentFileData.sha;
 
-            setStatus({ type: "loading", message: "Committing updated portfolio.json..." });
+            setStatus({ type: "loading", message: "Committing updated portfolio.json to GitHub..." });
 
             const updatedJsonString = JSON.stringify(data, null, 2);
             const contentBase64 = utf8ToBase64(updatedJsonString);
@@ -196,7 +211,7 @@ export default function AdminPage() {
 
             setStatus({
                 type: "success",
-                message: "🎉 Committed successfully! GitHub Actions is deploying your update (~30-60s to live).",
+                message: "Changes committed successfully! GitHub Actions is building and deploying your update (~30-60s to live).",
             });
         } catch (err: unknown) {
             const error = err as Error;
@@ -205,118 +220,204 @@ export default function AdminPage() {
     };
 
     return (
-        <div className="min-h-screen bg-olive-50 text-taupe-950 p-4 md:p-8 font-sans">
-            <div className="max-w-5xl mx-auto flex flex-col gap-6">
-                {/* Header */}
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-taupe-950/15 pb-4 gap-4">
-                    <div>
-                        <h1 className="text-3xl font-bold">Portfolio CMS Dashboard</h1>
-                        <p className="text-sm text-taupe-950/60">Git-based Headless Content Manager connected directly to GitHub</p>
+        <div className="min-h-screen bg-slate-50 text-slate-900 p-4 md:p-8 font-sans antialiased">
+            <div className="max-w-6xl mx-auto flex flex-col gap-6">
+                {/* Header Navbar */}
+                <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white border border-slate-200 rounded-xl p-5 shadow-xs gap-4">
+                    <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2">
+                            <h1 className="text-2xl font-bold tracking-tight text-slate-900">Portfolio CMS</h1>
+                            <span className="bg-slate-100 text-slate-700 text-xs font-semibold px-2.5 py-0.5 rounded-full border border-slate-200">shadcn ui</span>
+                        </div>
+                        <p className="text-xs text-slate-500">Git-based Headless Content Manager powered by GitHub REST API</p>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <a href="/" className="px-4 py-2 text-sm border border-taupe-950/15 rounded-xl hover:bg-taupe-950/5">← Back to Portfolio</a>
+
+                    <div className="flex items-center gap-3">
+                        <a
+                            href="/"
+                            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors shadow-2xs"
+                        >
+                            <ArrowLeft className="w-3.5 h-3.5" />
+                            <span>Portfolio Site</span>
+                        </a>
+
                         <button
                             onClick={handleCommitToGitHub}
                             disabled={status.type === "loading"}
-                            className="bg-[#5B8CFF] hover:bg-[#4878e6] text-white font-medium px-5 py-2 rounded-xl text-sm transition-all disabled:opacity-50"
+                            className="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-medium px-4 py-2 rounded-lg text-xs transition-colors shadow-2xs disabled:opacity-50"
                         >
-                            {status.type === "loading" ? "Publishing..." : "🚀 Save & Commit to GitHub"}
+                            {status.type === "loading" ? (
+                                <>
+                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                    <span>Publishing...</span>
+                                </>
+                            ) : (
+                                <>
+                                    <Save className="w-3.5 h-3.5" />
+                                    <span>Save & Commit</span>
+                                </>
+                            )}
                         </button>
                     </div>
-                </div>
+                </header>
 
-                {/* Status Bar */}
+                {/* Status Toast Alert */}
                 {status.message && (
-                    <div className={`p-4 rounded-xl text-sm ${status.type === "error" ? "bg-red-100 text-red-700 border border-red-200" : status.type === "success" ? "bg-green-100 text-green-800 border border-green-200" : "bg-blue-100 text-blue-800 border border-blue-200"}`}>
-                        {status.message}
+                    <div
+                        className={`flex items-center gap-3 p-4 rounded-xl text-xs font-medium border shadow-2xs ${status.type === "error"
+                            ? "bg-red-50 text-red-800 border-red-200"
+                            : status.type === "success"
+                                ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                                : "bg-sky-50 text-sky-800 border-sky-200"
+                            }`}
+                    >
+                        {status.type === "error" && <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />}
+                        {status.type === "success" && <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />}
+                        {status.type === "loading" && <Loader2 className="w-4 h-4 shrink-0 animate-spin text-sky-600" />}
+                        <span>{status.message}</span>
                     </div>
                 )}
 
-                {/* GitHub Config Section */}
-                <div className="border border-taupe-950/15 p-5 rounded-2xl bg-white/50 backdrop-blur flex flex-col gap-4">
-                    <div className="flex justify-between items-center">
-                        <h2 className="text-lg font-semibold flex items-center gap-2">
-                            🔑 GitHub Authentication
-                            {isConfigured ? <span className="text-xs bg-green-100 text-green-700 px-2.5 py-0.5 rounded-full">Connected</span> : <span className="text-xs bg-amber-100 text-amber-700 px-2.5 py-0.5 rounded-full">Not Configured</span>}
-                        </h2>
+                {/* GitHub Authentication Card */}
+                <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs flex flex-col gap-4">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                        <div className="flex items-center gap-2">
+                            <Key className="w-4 h-4 text-slate-500" />
+                            <h2 className="text-sm font-semibold text-slate-900">GitHub Authentication</h2>
+                            {isConfigured ? (
+                                <span className="inline-flex items-center gap-1 text-[11px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full border border-emerald-200 font-medium">
+                                    <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                                    <span>Connected</span>
+                                </span>
+                            ) : (
+                                <span className="inline-flex items-center gap-1 text-[11px] bg-amber-50 text-amber-700 px-2 py-0.5 rounded-full border border-amber-200 font-medium">
+                                    <span>Not Configured</span>
+                                </span>
+                            )}
+                        </div>
                         {isConfigured && (
-                            <button onClick={handleDisconnect} className="text-xs text-red-600 hover:underline">Disconnect Token</button>
+                            <button onClick={handleDisconnect} className="text-xs text-red-600 hover:text-red-700 font-medium hover:underline">
+                                Disconnect
+                            </button>
                         )}
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label className="text-xs font-medium block mb-1">Target Repository (owner/repo)</label>
+                        <div className="flex flex-col gap-1.5">
+                            <label className="text-xs font-medium text-slate-700">Target Repository</label>
                             <input
                                 type="text"
                                 value={repo}
                                 onChange={(e) => setRepo(e.target.value)}
-                                className="w-full text-sm border border-taupe-950/15 p-2 rounded-lg bg-white"
-                                placeholder="rpiirmdhni/rpiirmdhni.github.io"
+                                className="w-full text-xs border border-slate-300 p-2.5 rounded-lg bg-slate-50/50 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-slate-900 transition-all font-mono"
+                                placeholder="owner/repository"
                             />
                         </div>
-                        <div>
-                            <label className="text-xs font-medium block mb-1">Personal Access Token (repo scope)</label>
+
+                        <div className="flex flex-col gap-1.5">
+                            <label className="text-xs font-medium text-slate-700">Personal Access Token (PAT)</label>
                             <input
                                 type="password"
                                 value={token}
                                 onChange={(e) => setToken(e.target.value)}
-                                className="w-full text-sm border border-taupe-950/15 p-2 rounded-lg bg-white"
+                                className="w-full text-xs border border-slate-300 p-2.5 rounded-lg bg-slate-50/50 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-slate-900 transition-all font-mono"
                                 placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
                             />
                         </div>
                     </div>
+
                     {!isConfigured && (
-                        <button onClick={handleSaveConfig} className="w-fit px-4 py-1.5 text-xs bg-taupe-950 text-white rounded-lg hover:bg-taupe-950/80">Save Token to Browser</button>
+                        <div>
+                            <button
+                                onClick={handleSaveConfig}
+                                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-medium bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors"
+                            >
+                                <Save className="w-3.5 h-3.5" />
+                                <span>Save Credentials</span>
+                            </button>
+                        </div>
                     )}
                 </div>
 
-                {/* Tabs */}
-                <div className="flex border-b border-taupe-950/15 overflow-x-auto gap-2">
-                    {(["projects", "experiences", "educations", "skills", "languages", "stats"] as const).map((tab) => (
-                        <button
-                            key={tab}
-                            onClick={() => setActiveTab(tab)}
-                            className={`px-4 py-2 text-sm font-medium border-b-2 capitalize transition-all whitespace-nowrap ${activeTab === tab ? "border-[#5B8CFF] text-[#5B8CFF]" : "border-transparent text-taupe-950/60 hover:text-taupe-950"}`}
-                        >
-                            {tab}
-                        </button>
-                    ))}
+                {/* Tab Navigation Controls */}
+                <div className="bg-white border border-slate-200 rounded-xl p-1.5 shadow-xs flex overflow-x-auto gap-1">
+                    {[
+                        { id: "projects", label: "Projects", icon: FolderKanban },
+                        { id: "experiences", label: "Experiences", icon: Briefcase },
+                        { id: "educations", label: "Educations", icon: GraduationCap },
+                        { id: "skills", label: "Skills", icon: Wrench },
+                        { id: "languages", label: "Languages", icon: Globe },
+                        { id: "stats", label: "About Stats", icon: BarChart3 },
+                    ].map((tab) => {
+                        const Icon = tab.icon;
+                        const isActive = activeTab === tab.id;
+                        return (
+                            <button
+                                key={tab.id}
+                                onClick={() => setActiveTab(tab.id as typeof activeTab)}
+                                className={`flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium rounded-lg transition-all whitespace-nowrap ${isActive
+                                    ? "bg-slate-900 text-white shadow-2xs"
+                                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                                    }`}
+                            >
+                                <Icon className="w-3.5 h-3.5" />
+                                <span>{tab.label}</span>
+                            </button>
+                        );
+                    })}
                 </div>
 
-                {/* TAB CONTENT */}
-                <div className="border border-taupe-950/15 p-6 rounded-2xl bg-white flex flex-col gap-6">
+                {/* TAB CONTENT CARDS */}
+                <main className="bg-white border border-slate-200 rounded-xl p-6 shadow-xs flex flex-col gap-6">
                     {/* PROJECTS TAB */}
                     {activeTab === "projects" && (
                         <div className="flex flex-col gap-6">
-                            <div className="flex justify-between items-center">
-                                <h3 className="text-xl font-semibold">Projects ({data.projects.length})</h3>
+                            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                                <div>
+                                    <h3 className="text-base font-semibold text-slate-900">Featured Projects</h3>
+                                    <p className="text-xs text-slate-500">Manage your project showcase entries, images and repository links</p>
+                                </div>
                                 <button
-                                    onClick={() => setData({ ...data, projects: [{ title: "New Project", image: "/assets/img/projects/litespeak.png", description: "Project description", badge: "", links: [] }, ...data.projects] })}
-                                    className="px-3 py-1.5 text-xs bg-[#5B8CFF] text-white rounded-lg font-medium"
+                                    onClick={() =>
+                                        setData({
+                                            ...data,
+                                            projects: [
+                                                { title: "New Project", image: "/assets/img/projects/litespeak.png", description: "Project description", badge: "", links: [] },
+                                                ...data.projects,
+                                            ],
+                                        })
+                                    }
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors"
                                 >
-                                    + Add Project
+                                    <Plus className="w-3.5 h-3.5" />
+                                    <span>Add Project</span>
                                 </button>
                             </div>
 
-                            {imageUploadStatus && <p className="text-xs text-blue-600 font-mono">{imageUploadStatus}</p>}
+                            {imageUploadStatus && (
+                                <div className="text-xs text-sky-700 bg-sky-50 border border-sky-200 p-2.5 rounded-lg font-mono flex items-center gap-2">
+                                    <Upload className="w-3.5 h-3.5 text-sky-600" />
+                                    <span>{imageUploadStatus}</span>
+                                </div>
+                            )}
 
                             <div className="flex flex-col gap-6">
                                 {data.projects.map((project, idx) => (
-                                    <div key={idx} className="border border-taupe-950/15 p-4 rounded-xl flex flex-col gap-4 bg-olive-50/50">
-                                        <div className="flex justify-between items-center">
-                                            <span className="text-sm font-bold text-taupe-950/50">Project #{idx + 1}</span>
+                                    <div key={idx} className="border border-slate-200 rounded-xl p-5 bg-slate-50/50 flex flex-col gap-4">
+                                        <div className="flex justify-between items-center border-b border-slate-200/60 pb-2">
+                                            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Project #{idx + 1}</span>
                                             <button
                                                 onClick={() => setData({ ...data, projects: data.projects.filter((_, i) => i !== idx) })}
-                                                className="text-xs text-red-600 hover:underline"
+                                                className="inline-flex items-center gap-1 text-xs text-red-600 hover:text-red-700 font-medium"
                                             >
-                                                Delete Project
+                                                <Trash2 className="w-3.5 h-3.5" />
+                                                <span>Delete</span>
                                             </button>
                                         </div>
 
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div>
-                                                <label className="text-xs font-medium block mb-1">Title</label>
+                                            <div className="flex flex-col gap-1">
+                                                <label className="text-xs font-medium text-slate-700">Project Title</label>
                                                 <input
                                                     type="text"
                                                     value={project.title}
@@ -325,11 +426,12 @@ export default function AdminPage() {
                                                         copy[idx].title = e.target.value;
                                                         setData({ ...data, projects: copy });
                                                     }}
-                                                    className="w-full text-sm border border-taupe-950/15 p-2 rounded-lg bg-white"
+                                                    className="w-full text-xs border border-slate-300 p-2.5 rounded-lg bg-white"
                                                 />
                                             </div>
-                                            <div>
-                                                <label className="text-xs font-medium block mb-1">Badge (Optional)</label>
+
+                                            <div className="flex flex-col gap-1">
+                                                <label className="text-xs font-medium text-slate-700">Badge Tag (Optional)</label>
                                                 <input
                                                     type="text"
                                                     value={project.badge || ""}
@@ -338,14 +440,14 @@ export default function AdminPage() {
                                                         copy[idx].badge = e.target.value || undefined;
                                                         setData({ ...data, projects: copy });
                                                     }}
-                                                    className="w-full text-sm border border-taupe-950/15 p-2 rounded-lg bg-white"
-                                                    placeholder="e.g. Private"
+                                                    className="w-full text-xs border border-slate-300 p-2.5 rounded-lg bg-white"
+                                                    placeholder="e.g. Private / Open-Source"
                                                 />
                                             </div>
                                         </div>
 
-                                        <div>
-                                            <label className="text-xs font-medium block mb-1">Image URL / Path</label>
+                                        <div className="flex flex-col gap-1">
+                                            <label className="text-xs font-medium text-slate-700">Image Asset Path / Direct Upload</label>
                                             <div className="flex gap-2 items-center">
                                                 <input
                                                     type="text"
@@ -355,10 +457,11 @@ export default function AdminPage() {
                                                         copy[idx].image = e.target.value;
                                                         setData({ ...data, projects: copy });
                                                     }}
-                                                    className="w-full text-sm border border-taupe-950/15 p-2 rounded-lg bg-white"
+                                                    className="w-full text-xs border border-slate-300 p-2.5 rounded-lg bg-white font-mono"
                                                 />
-                                                <label className="cursor-pointer px-3 py-2 text-xs bg-taupe-950 text-white rounded-lg whitespace-nowrap hover:bg-taupe-950/80">
-                                                    Upload File
+                                                <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors whitespace-nowrap">
+                                                    <Upload className="w-3.5 h-3.5" />
+                                                    <span>Upload Asset</span>
                                                     <input
                                                         type="file"
                                                         accept="image/*"
@@ -378,8 +481,8 @@ export default function AdminPage() {
                                             </div>
                                         </div>
 
-                                        <div>
-                                            <label className="text-xs font-medium block mb-1">Description</label>
+                                        <div className="flex flex-col gap-1">
+                                            <label className="text-xs font-medium text-slate-700">Description</label>
                                             <textarea
                                                 rows={2}
                                                 value={project.description}
@@ -388,25 +491,27 @@ export default function AdminPage() {
                                                     copy[idx].description = e.target.value;
                                                     setData({ ...data, projects: copy });
                                                 }}
-                                                className="w-full text-sm border border-taupe-950/15 p-2 rounded-lg bg-white"
+                                                className="w-full text-xs border border-slate-300 p-2.5 rounded-lg bg-white"
                                             />
                                         </div>
 
-                                        {/* Links */}
-                                        <div className="flex flex-col gap-2">
+                                        {/* Project Links Section */}
+                                        <div className="flex flex-col gap-2 pt-2 border-t border-slate-200/60">
                                             <div className="flex justify-between items-center">
-                                                <label className="text-xs font-semibold">Links</label>
+                                                <label className="text-xs font-semibold text-slate-900">Project Action Buttons / Links</label>
                                                 <button
                                                     onClick={() => {
                                                         const copy = [...data.projects];
-                                                        copy[idx].links = [...(copy[idx].links || []), { type: "github", href: "", label: "View link" }];
+                                                        copy[idx].links = [...(copy[idx].links || []), { type: "github", href: "", label: "View Link" }];
                                                         setData({ ...data, projects: copy });
                                                     }}
-                                                    className="text-xs text-[#5B8CFF] font-medium"
+                                                    className="inline-flex items-center gap-1 text-xs text-sky-600 hover:text-sky-700 font-medium"
                                                 >
-                                                    + Add Link
+                                                    <Plus className="w-3 h-3" />
+                                                    <span>Add Link Button</span>
                                                 </button>
                                             </div>
+
                                             {project.links?.map((link, lIdx) => (
                                                 <div key={lIdx} className="flex gap-2 items-center">
                                                     <select
@@ -416,11 +521,11 @@ export default function AdminPage() {
                                                             if (copy[idx].links) copy[idx].links![lIdx].type = e.target.value as ProjectLink["type"];
                                                             setData({ ...data, projects: copy });
                                                         }}
-                                                        className="text-xs border border-taupe-950/15 p-2 rounded-lg bg-white"
+                                                        className="text-xs border border-slate-300 p-2 rounded-lg bg-white"
                                                     >
-                                                        <option value="github">github</option>
-                                                        <option value="npm">npm</option>
-                                                        <option value="figma">figma</option>
+                                                        <option value="github">GitHub</option>
+                                                        <option value="npm">NPM</option>
+                                                        <option value="figma">Figma</option>
                                                     </select>
                                                     <input
                                                         type="text"
@@ -430,8 +535,8 @@ export default function AdminPage() {
                                                             if (copy[idx].links) copy[idx].links![lIdx].label = e.target.value;
                                                             setData({ ...data, projects: copy });
                                                         }}
-                                                        placeholder="Label (e.g. View on Github)"
-                                                        className="text-xs border border-taupe-950/15 p-2 rounded-lg bg-white w-1/3"
+                                                        placeholder="Label"
+                                                        className="text-xs border border-slate-300 p-2 rounded-lg bg-white w-1/3"
                                                     />
                                                     <input
                                                         type="text"
@@ -441,8 +546,8 @@ export default function AdminPage() {
                                                             if (copy[idx].links) copy[idx].links![lIdx].href = e.target.value;
                                                             setData({ ...data, projects: copy });
                                                         }}
-                                                        placeholder="URL (https://...)"
-                                                        className="text-xs border border-taupe-950/15 p-2 rounded-lg bg-white w-full"
+                                                        placeholder="https://..."
+                                                        className="text-xs border border-slate-300 p-2 rounded-lg bg-white w-full font-mono"
                                                     />
                                                     <button
                                                         onClick={() => {
@@ -450,9 +555,9 @@ export default function AdminPage() {
                                                             copy[idx].links = copy[idx].links?.filter((_, i) => i !== lIdx);
                                                             setData({ ...data, projects: copy });
                                                         }}
-                                                        className="text-xs text-red-500 font-bold px-2"
+                                                        className="p-1.5 text-slate-400 hover:text-red-600 transition-colors"
                                                     >
-                                                        ✕
+                                                        <X className="w-3.5 h-3.5" />
                                                     </button>
                                                 </div>
                                             ))}
@@ -466,28 +571,39 @@ export default function AdminPage() {
                     {/* EXPERIENCES TAB */}
                     {activeTab === "experiences" && (
                         <div className="flex flex-col gap-6">
-                            <div className="flex justify-between items-center">
-                                <h3 className="text-xl font-semibold">Experiences ({data.experiences.length})</h3>
+                            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                                <div>
+                                    <h3 className="text-base font-semibold text-slate-900">Work & Leadership Experiences</h3>
+                                    <p className="text-xs text-slate-500">Timeline of professional experience, founder roles and memberships</p>
+                                </div>
                                 <button
-                                    onClick={() => setData({ ...data, experiences: [{ period: "2026 - Present", title: "New Role", organization: "Company Name", current: true }, ...data.experiences] })}
-                                    className="px-3 py-1.5 text-xs bg-[#5B8CFF] text-white rounded-lg font-medium"
+                                    onClick={() =>
+                                        setData({
+                                            ...data,
+                                            experiences: [{ period: "2026 - Present", title: "New Role", organization: "Organization Name", current: true }, ...data.experiences],
+                                        })
+                                    }
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors"
                                 >
-                                    + Add Experience
+                                    <Plus className="w-3.5 h-3.5" />
+                                    <span>Add Experience</span>
                                 </button>
                             </div>
 
                             <div className="flex flex-col gap-4">
                                 {data.experiences.map((exp, idx) => (
-                                    <div key={idx} className="border border-taupe-950/15 p-4 rounded-xl flex flex-col gap-3 bg-olive-50/50">
+                                    <div key={idx} className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 flex flex-col gap-3">
                                         <div className="flex justify-between items-center">
-                                            <span className="text-xs font-bold text-taupe-950/50">Entry #{idx + 1}</span>
+                                            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Entry #{idx + 1}</span>
                                             <button
                                                 onClick={() => setData({ ...data, experiences: data.experiences.filter((_, i) => i !== idx) })}
-                                                className="text-xs text-red-600 hover:underline"
+                                                className="inline-flex items-center gap-1 text-xs text-red-600 hover:text-red-700 font-medium"
                                             >
-                                                Delete
+                                                <Trash2 className="w-3.5 h-3.5" />
+                                                <span>Delete</span>
                                             </button>
                                         </div>
+
                                         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                                             <input
                                                 type="text"
@@ -498,7 +614,7 @@ export default function AdminPage() {
                                                     setData({ ...data, experiences: copy });
                                                 }}
                                                 placeholder="Period (e.g. 2025 - Present)"
-                                                className="text-xs border border-taupe-950/15 p-2 rounded-lg bg-white"
+                                                className="text-xs border border-slate-300 p-2 rounded-lg bg-white"
                                             />
                                             <input
                                                 type="text"
@@ -509,7 +625,7 @@ export default function AdminPage() {
                                                     setData({ ...data, experiences: copy });
                                                 }}
                                                 placeholder="Role / Title"
-                                                className="text-xs border border-taupe-950/15 p-2 rounded-lg bg-white"
+                                                className="text-xs border border-slate-300 p-2 rounded-lg bg-white"
                                             />
                                             <input
                                                 type="text"
@@ -519,8 +635,8 @@ export default function AdminPage() {
                                                     copy[idx].organization = e.target.value;
                                                     setData({ ...data, experiences: copy });
                                                 }}
-                                                placeholder="Organization / Company"
-                                                className="text-xs border border-taupe-950/15 p-2 rounded-lg bg-white"
+                                                placeholder="Company / Organization"
+                                                className="text-xs border border-slate-300 p-2 rounded-lg bg-white"
                                             />
                                             <input
                                                 type="text"
@@ -531,10 +647,11 @@ export default function AdminPage() {
                                                     setData({ ...data, experiences: copy });
                                                 }}
                                                 placeholder="Badge (e.g. Freelance)"
-                                                className="text-xs border border-taupe-950/15 p-2 rounded-lg bg-white"
+                                                className="text-xs border border-slate-300 p-2 rounded-lg bg-white"
                                             />
                                         </div>
-                                        <label className="flex items-center gap-2 text-xs cursor-pointer">
+
+                                        <label className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
                                             <input
                                                 type="checkbox"
                                                 checked={exp.current}
@@ -543,8 +660,9 @@ export default function AdminPage() {
                                                     copy[idx].current = e.target.checked;
                                                     setData({ ...data, experiences: copy });
                                                 }}
+                                                className="rounded border-slate-300 text-slate-900 focus:ring-slate-900"
                                             />
-                                            <span>Ongoing / Current role (Filled Blue Dot)</span>
+                                            <span>Current / Ongoing Role (Blue Dot Indicator)</span>
                                         </label>
                                     </div>
                                 ))}
@@ -555,28 +673,39 @@ export default function AdminPage() {
                     {/* EDUCATIONS TAB */}
                     {activeTab === "educations" && (
                         <div className="flex flex-col gap-6">
-                            <div className="flex justify-between items-center">
-                                <h3 className="text-xl font-semibold">Educations ({data.educations.length})</h3>
+                            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                                <div>
+                                    <h3 className="text-base font-semibold text-slate-900">Education Timeline</h3>
+                                    <p className="text-xs text-slate-500">Academic institutions and degree programs</p>
+                                </div>
                                 <button
-                                    onClick={() => setData({ ...data, educations: [{ period: "2026 - Present", title: "Degree / Program", organization: "Institution Name", current: true }, ...data.educations] })}
-                                    className="px-3 py-1.5 text-xs bg-[#5B8CFF] text-white rounded-lg font-medium"
+                                    onClick={() =>
+                                        setData({
+                                            ...data,
+                                            educations: [{ period: "2026 - Present", title: "Field of Study", organization: "Institution Name", current: true }, ...data.educations],
+                                        })
+                                    }
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors"
                                 >
-                                    + Add Education
+                                    <Plus className="w-3.5 h-3.5" />
+                                    <span>Add Education</span>
                                 </button>
                             </div>
 
                             <div className="flex flex-col gap-4">
                                 {data.educations.map((edu, idx) => (
-                                    <div key={idx} className="border border-taupe-950/15 p-4 rounded-xl flex flex-col gap-3 bg-olive-50/50">
+                                    <div key={idx} className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 flex flex-col gap-3">
                                         <div className="flex justify-between items-center">
-                                            <span className="text-xs font-bold text-taupe-950/50">Entry #{idx + 1}</span>
+                                            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Entry #{idx + 1}</span>
                                             <button
                                                 onClick={() => setData({ ...data, educations: data.educations.filter((_, i) => i !== idx) })}
-                                                className="text-xs text-red-600 hover:underline"
+                                                className="inline-flex items-center gap-1 text-xs text-red-600 hover:text-red-700 font-medium"
                                             >
-                                                Delete
+                                                <Trash2 className="w-3.5 h-3.5" />
+                                                <span>Delete</span>
                                             </button>
                                         </div>
+
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                                             <input
                                                 type="text"
@@ -587,7 +716,7 @@ export default function AdminPage() {
                                                     setData({ ...data, educations: copy });
                                                 }}
                                                 placeholder="Period"
-                                                className="text-xs border border-taupe-950/15 p-2 rounded-lg bg-white"
+                                                className="text-xs border border-slate-300 p-2 rounded-lg bg-white"
                                             />
                                             <input
                                                 type="text"
@@ -597,8 +726,8 @@ export default function AdminPage() {
                                                     copy[idx].title = e.target.value;
                                                     setData({ ...data, educations: copy });
                                                 }}
-                                                placeholder="Field of Study"
-                                                className="text-xs border border-taupe-950/15 p-2 rounded-lg bg-white"
+                                                placeholder="Major / Field of Study"
+                                                className="text-xs border border-slate-300 p-2 rounded-lg bg-white"
                                             />
                                             <input
                                                 type="text"
@@ -609,10 +738,11 @@ export default function AdminPage() {
                                                     setData({ ...data, educations: copy });
                                                 }}
                                                 placeholder="School / University"
-                                                className="text-xs border border-taupe-950/15 p-2 rounded-lg bg-white"
+                                                className="text-xs border border-slate-300 p-2 rounded-lg bg-white"
                                             />
                                         </div>
-                                        <label className="flex items-center gap-2 text-xs cursor-pointer">
+
+                                        <label className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
                                             <input
                                                 type="checkbox"
                                                 checked={edu.current}
@@ -621,8 +751,9 @@ export default function AdminPage() {
                                                     copy[idx].current = e.target.checked;
                                                     setData({ ...data, educations: copy });
                                                 }}
+                                                className="rounded border-slate-300 text-slate-900 focus:ring-slate-900"
                                             />
-                                            <span>Currently Studying (Filled Blue Dot)</span>
+                                            <span>Currently Studying (Blue Dot Indicator)</span>
                                         </label>
                                     </div>
                                 ))}
@@ -633,19 +764,23 @@ export default function AdminPage() {
                     {/* SKILLS TAB */}
                     {activeTab === "skills" && (
                         <div className="flex flex-col gap-6">
-                            <div className="flex justify-between items-center">
-                                <h3 className="text-xl font-semibold">Skill Groups ({data.skillGroups.length})</h3>
+                            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                                <div>
+                                    <h3 className="text-base font-semibold text-slate-900">Technical & Soft Skills</h3>
+                                    <p className="text-xs text-slate-500">Group skills by categories (Tech Stack, Design, Tools, Soft Skills)</p>
+                                </div>
                                 <button
                                     onClick={() => setData({ ...data, skillGroups: [...data.skillGroups, { title: "New Category", items: ["Skill Item"] }] })}
-                                    className="px-3 py-1.5 text-xs bg-[#5B8CFF] text-white rounded-lg font-medium"
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors"
                                 >
-                                    + Add Category
+                                    <Plus className="w-3.5 h-3.5" />
+                                    <span>Add Category</span>
                                 </button>
                             </div>
 
                             <div className="flex flex-col gap-6">
                                 {data.skillGroups.map((group, sIdx) => (
-                                    <div key={sIdx} className="border border-taupe-950/15 p-4 rounded-xl flex flex-col gap-3 bg-olive-50/50">
+                                    <div key={sIdx} className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 flex flex-col gap-3">
                                         <div className="flex justify-between items-center">
                                             <input
                                                 type="text"
@@ -655,17 +790,19 @@ export default function AdminPage() {
                                                     copy[sIdx].title = e.target.value;
                                                     setData({ ...data, skillGroups: copy });
                                                 }}
-                                                className="text-sm font-bold border border-taupe-950/15 p-1.5 rounded-lg bg-white w-60"
+                                                className="text-xs font-bold border border-slate-300 p-2 rounded-lg bg-white w-60"
                                             />
                                             <button
                                                 onClick={() => setData({ ...data, skillGroups: data.skillGroups.filter((_, i) => i !== sIdx) })}
-                                                className="text-xs text-red-600 hover:underline"
+                                                className="inline-flex items-center gap-1 text-xs text-red-600 hover:text-red-700 font-medium"
                                             >
-                                                Delete Category
+                                                <Trash2 className="w-3.5 h-3.5" />
+                                                <span>Delete Category</span>
                                             </button>
                                         </div>
-                                        <div>
-                                            <label className="text-xs font-medium block mb-1">Items (comma-separated)</label>
+
+                                        <div className="flex flex-col gap-1">
+                                            <label className="text-xs font-medium text-slate-700">Skill Tags (Comma-separated)</label>
                                             <textarea
                                                 rows={2}
                                                 value={group.items.join(", ")}
@@ -674,7 +811,7 @@ export default function AdminPage() {
                                                     copy[sIdx].items = e.target.value.split(",").map((s) => s.trim()).filter(Boolean);
                                                     setData({ ...data, skillGroups: copy });
                                                 }}
-                                                className="w-full text-xs border border-taupe-950/15 p-2 rounded-lg bg-white font-mono"
+                                                className="w-full text-xs border border-slate-300 p-2.5 rounded-lg bg-white font-mono"
                                             />
                                         </div>
                                     </div>
@@ -686,19 +823,23 @@ export default function AdminPage() {
                     {/* LANGUAGES TAB */}
                     {activeTab === "languages" && (
                         <div className="flex flex-col gap-6">
-                            <div className="flex justify-between items-center">
-                                <h3 className="text-xl font-semibold">Languages ({data.languages.length})</h3>
+                            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                                <div>
+                                    <h3 className="text-base font-semibold text-slate-900">Languages & Proficiency</h3>
+                                    <p className="text-xs text-slate-500">Language fluency and visual progress bar percentages</p>
+                                </div>
                                 <button
-                                    onClick={() => setData({ ...data, languages: [...data.languages, { name: "Language", level: "Proficiency Level", percent: 50 }] })}
-                                    className="px-3 py-1.5 text-xs bg-[#5B8CFF] text-white rounded-lg font-medium"
+                                    onClick={() => setData({ ...data, languages: [...data.languages, { name: "Language", level: "Proficiency Level", percent: 80 }] })}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors"
                                 >
-                                    + Add Language
+                                    <Plus className="w-3.5 h-3.5" />
+                                    <span>Add Language</span>
                                 </button>
                             </div>
 
                             <div className="flex flex-col gap-4">
                                 {data.languages.map((lang, idx) => (
-                                    <div key={idx} className="border border-taupe-950/15 p-4 rounded-xl flex items-center gap-3 bg-olive-50/50">
+                                    <div key={idx} className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 flex items-center gap-3">
                                         <input
                                             type="text"
                                             value={lang.name}
@@ -708,7 +849,7 @@ export default function AdminPage() {
                                                 setData({ ...data, languages: copy });
                                             }}
                                             placeholder="Language Name"
-                                            className="text-xs border border-taupe-950/15 p-2 rounded-lg bg-white w-1/4"
+                                            className="text-xs border border-slate-300 p-2.5 rounded-lg bg-white w-1/4"
                                         />
                                         <input
                                             type="text"
@@ -718,8 +859,8 @@ export default function AdminPage() {
                                                 copy[idx].level = e.target.value;
                                                 setData({ ...data, languages: copy });
                                             }}
-                                            placeholder="Proficiency Description"
-                                            className="text-xs border border-taupe-950/15 p-2 rounded-lg bg-white w-1/2"
+                                            placeholder="Proficiency Level"
+                                            className="text-xs border border-slate-300 p-2.5 rounded-lg bg-white w-1/2"
                                         />
                                         <div className="flex items-center gap-1 w-1/4">
                                             <input
@@ -732,15 +873,15 @@ export default function AdminPage() {
                                                     copy[idx].percent = Number(e.target.value);
                                                     setData({ ...data, languages: copy });
                                                 }}
-                                                className="text-xs border border-taupe-950/15 p-2 rounded-lg bg-white w-full"
+                                                className="text-xs border border-slate-300 p-2.5 rounded-lg bg-white w-full"
                                             />
-                                            <span className="text-xs">%</span>
+                                            <span className="text-xs font-semibold text-slate-500">%</span>
                                         </div>
                                         <button
                                             onClick={() => setData({ ...data, languages: data.languages.filter((_, i) => i !== idx) })}
-                                            className="text-xs text-red-600 font-bold px-2"
+                                            className="p-1.5 text-slate-400 hover:text-red-600 transition-colors"
                                         >
-                                            ✕
+                                            <Trash2 className="w-4 h-4" />
                                         </button>
                                     </div>
                                 ))}
@@ -751,39 +892,50 @@ export default function AdminPage() {
                     {/* STATS TAB */}
                     {activeTab === "stats" && (
                         <div className="flex flex-col gap-6">
-                            <h3 className="text-xl font-semibold">About Me Stats</h3>
+                            <div className="border-b border-slate-100 pb-4">
+                                <h3 className="text-base font-semibold text-slate-900">About Me Stat Cards</h3>
+                                <p className="text-xs text-slate-500">Edit the three stat metrics shown under the About Me section</p>
+                            </div>
+
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 {data.aboutStats.map((stat, idx) => (
-                                    <div key={idx} className="border border-taupe-950/15 p-4 rounded-xl flex flex-col gap-2 bg-olive-50/50">
-                                        <label className="text-xs font-semibold">Card #{idx + 1}</label>
-                                        <input
-                                            type="text"
-                                            value={stat.value}
-                                            onChange={(e) => {
-                                                const copy = [...data.aboutStats];
-                                                copy[idx].value = e.target.value;
-                                                setData({ ...data, aboutStats: copy });
-                                            }}
-                                            placeholder="Value (e.g. 19 or ~162 cm)"
-                                            className="text-sm font-bold border border-taupe-950/15 p-2 rounded-lg bg-white"
-                                        />
-                                        <input
-                                            type="text"
-                                            value={stat.label}
-                                            onChange={(e) => {
-                                                const copy = [...data.aboutStats];
-                                                copy[idx].label = e.target.value;
-                                                setData({ ...data, aboutStats: copy });
-                                            }}
-                                            placeholder="Label (e.g. Years Old)"
-                                            className="text-xs border border-taupe-950/15 p-2 rounded-lg bg-white"
-                                        />
+                                    <div key={idx} className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 flex flex-col gap-3">
+                                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Metric #{idx + 1}</span>
+                                        <div className="flex flex-col gap-1">
+                                            <label className="text-xs font-medium text-slate-700">Display Value</label>
+                                            <input
+                                                type="text"
+                                                value={stat.value}
+                                                onChange={(e) => {
+                                                    const copy = [...data.aboutStats];
+                                                    copy[idx].value = e.target.value;
+                                                    setData({ ...data, aboutStats: copy });
+                                                }}
+                                                placeholder="e.g. 19 or ~162 cm"
+                                                className="text-xs font-semibold border border-slate-300 p-2.5 rounded-lg bg-white"
+                                            />
+                                        </div>
+
+                                        <div className="flex flex-col gap-1">
+                                            <label className="text-xs font-medium text-slate-700">Subtext Label</label>
+                                            <input
+                                                type="text"
+                                                value={stat.label}
+                                                onChange={(e) => {
+                                                    const copy = [...data.aboutStats];
+                                                    copy[idx].label = e.target.value;
+                                                    setData({ ...data, aboutStats: copy });
+                                                }}
+                                                placeholder="e.g. Years Old (in 2026)"
+                                                className="text-xs border border-slate-300 p-2.5 rounded-lg bg-white"
+                                            />
+                                        </div>
                                     </div>
                                 ))}
                             </div>
                         </div>
                     )}
-                </div>
+                </main>
             </div>
         </div>
     );
