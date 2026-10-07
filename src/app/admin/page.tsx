@@ -1427,7 +1427,7 @@ export default function AdminDashboard() {
                         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
                             <div>
                                 <h3 className="font-bold text-slate-900 text-sm">Rename Upload File</h3>
-                                <p className="text-xs text-slate-500 mt-0.5">Tentukan nama file sebelum di-upload ke GitHub</p>
+                                <p className="text-xs text-slate-500 mt-0.5">Set target filename before uploading to GitHub</p>
                             </div>
                             <button
                                 onClick={() => setUploadModal({ isOpen: false, file: null, originalExt: ".png", filename: "", callback: null })}
@@ -1445,7 +1445,7 @@ export default function AdminDashboard() {
                             className="p-6 space-y-4"
                         >
                             <div className="space-y-2">
-                                <label className="text-xs font-semibold text-slate-700">Nama File</label>
+                                <label className="text-xs font-semibold text-slate-700">Filename</label>
                                 <div className="flex items-center gap-2">
                                     <Input
                                         type="text"
@@ -1460,7 +1460,7 @@ export default function AdminDashboard() {
                                     </Badge>
                                 </div>
                                 <p className="text-[11px] text-slate-500 leading-tight pt-1">
-                                    Path target: <code className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-800 font-mono text-[10px] font-medium">public/assets/img/projects/{(uploadModal.filename.trim() || "image").toLowerCase().replace(/[^a-z0-9._-]/g, "-") + uploadModal.originalExt}</code>
+                                    Target path: <code className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-800 font-mono text-[10px] font-medium">public/assets/img/projects/{(uploadModal.filename.trim() || "image").toLowerCase().replace(/[^a-z0-9._-]/g, "-") + uploadModal.originalExt}</code>
                                 </p>
                             </div>
 
@@ -1471,7 +1471,7 @@ export default function AdminDashboard() {
                                     onClick={() => setUploadModal({ isOpen: false, file: null, originalExt: ".png", filename: "", callback: null })}
                                     className="text-xs font-medium border-slate-300 text-slate-700 hover:bg-slate-100 cursor-pointer"
                                 >
-                                    Batal
+                                    Cancel
                                 </Button>
                                 <Button
                                     type="submit"
