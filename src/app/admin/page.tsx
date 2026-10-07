@@ -502,7 +502,7 @@ export default function AdminDashboard() {
                 </div>
 
                 {/* Sidebar Footer */}
-                <div className="p-4 border-t border-slate-200 flex flex-col gap-3">
+                <div className="p-4 border-t border-slate-200 flex flex-col gap-2.5">
                     <div className="flex items-center justify-between px-3 py-2 bg-slate-50 rounded-lg border border-slate-200">
                         <div className="flex items-center gap-2 min-w-0">
                             <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0"></div>
@@ -510,10 +510,18 @@ export default function AdminDashboard() {
                                 @{tokenValidation.userLogin || "admin"}
                             </span>
                         </div>
-                        <button onClick={handleLogout} title="Logout" className="text-slate-400 hover:text-red-600 transition-colors cursor-pointer">
-                            <LogOut className="w-3.5 h-3.5" />
-                        </button>
+                        <span className="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-medium">Online</span>
                     </div>
+
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleLogout}
+                        className="w-full justify-center gap-2 border-slate-200 text-slate-700 hover:text-red-600 hover:bg-red-50 hover:border-red-200 text-xs font-semibold h-9 cursor-pointer"
+                    >
+                        <LogOut className="w-3.5 h-3.5" />
+                        <span>Logout Session</span>
+                    </Button>
 
                     <a
                         href="/"
@@ -598,31 +606,6 @@ export default function AdminDashboard() {
                     {/* OVERVIEW TAB */}
                     {activeTab === "overview" && (
                         <div className="flex flex-col gap-6">
-                            <Card className="bg-white border-slate-200">
-                                <CardHeader className="flex flex-row items-center justify-between pb-3">
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2.5 bg-slate-100 border border-slate-200 text-slate-700 rounded-lg">
-                                            <Lock className="w-5 h-5" />
-                                        </div>
-                                        <div>
-                                            <CardTitle className="text-sm font-semibold text-slate-900">Secure Local Session</CardTitle>
-                                            <CardDescription className="text-xs text-slate-500">
-                                                Connected to repository <strong>{repo}</strong>.
-                                                Your token is verified and encrypted in browser session.
-                                            </CardDescription>
-                                        </div>
-                                    </div>
-                                    <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={handleLogout}
-                                        className="border-slate-300 text-slate-700 hover:bg-slate-100 text-xs gap-1.5"
-                                    >
-                                        <LogOut className="w-3.5 h-3.5" />
-                                        <span>Logout Session</span>
-                                    </Button>
-                                </CardHeader>
-                            </Card>
 
                             {/* Metrics Grid */}
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
