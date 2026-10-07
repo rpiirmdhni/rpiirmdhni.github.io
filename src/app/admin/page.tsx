@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import {
     AlertCircle,
     ArrowLeft,
+    ArrowRight,
     BarChart3,
     Briefcase,
     CheckCircle2,
@@ -551,7 +552,7 @@ export default function AdminDashboard() {
                                             <Lock className="w-5 h-5" />
                                         </div>
                                         <div>
-                                            <CardTitle className="text-sm font-semibold text-slate-900">🔒 Secure Local Session</CardTitle>
+                                            <CardTitle className="text-sm font-semibold text-slate-900">Secure Local Session</CardTitle>
                                             <CardDescription className="text-xs text-slate-500">
                                                 Connected to repository <strong>{repo}</strong>.
                                                 Your token is verified and encrypted in browser session.
@@ -605,8 +606,9 @@ export default function AdminDashboard() {
                                         <CardTitle className="text-sm font-semibold text-slate-900">Live Featured Projects</CardTitle>
                                         <CardDescription className="text-xs text-slate-500">Overview of project cards rendered on portfolio</CardDescription>
                                     </div>
-                                    <Button size="sm" variant="ghost" onClick={() => setActiveTab("projects")} className="text-xs text-slate-700 hover:text-slate-900">
-                                        Manage Projects →
+                                    <Button size="sm" variant="ghost" onClick={() => setActiveTab("projects")} className="text-xs text-slate-700 hover:text-slate-900 gap-1">
+                                        <span>Manage Projects</span>
+                                        <ArrowRight className="w-3.5 h-3.5" />
                                     </Button>
                                 </CardHeader>
                                 <CardContent className="divide-y divide-slate-100 pt-3">
