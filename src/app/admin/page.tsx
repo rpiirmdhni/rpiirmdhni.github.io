@@ -111,16 +111,25 @@ export default function AdminDashboard() {
 
     // Real-time API Key / Token Validation
     const validateToken = async (testToken: string, testRepo: string) => {
-        if (!testToken.trim()) {
+        const cleanToken = testToken.trim();
+        const cleanRepo = testRepo.trim();
+
+        if (!cleanToken) {
             setTokenValidation({ status: "invalid", message: "Please enter your Personal Access Token." });
+            return false;
+        }
+
+        // Security check: validate repository format (owner/repo)
+        if (!/^[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+$/.test(cleanRepo)) {
+            setTokenValidation({ status: "invalid", message: "Invalid repository format. Must be 'username/repository'." });
             return false;
         }
 
         setTokenValidation({ status: "testing", message: "Validating API Key with GitHub..." });
 
         try {
-            const res = await fetch(`https://api.github.com/repos/${testRepo.trim()}`, {
-                headers: { Authorization: `Bearer ${testToken.trim()}` },
+            const res = await fetch(`https://api.github.com/repos/${encodeURIComponent(cleanRepo.split("/")[0])}/${encodeURIComponent(cleanRepo.split("/")[1])}`, {
+                headers: { Authorization: `Bearer ${cleanToken}` },
             });
 
             if (res.status === 401) {
@@ -202,6 +211,19 @@ export default function AdminDashboard() {
 
     const handleFileUpload = async (file: File, callback: (url: string) => void) => {
         if (!token) return alert("Please login first.");
+
+        // Security Check 1: File size limit (10MB max)
+        const MAX_FILE_SIZE = 10 * 1024 * 1024;
+        if (file.size > MAX_FILE_SIZE) {
+            return alert("File size exceeds 10MB limit. Please upload a smaller image.");
+        }
+
+        // Security Check 2: File type validation (images only)
+        const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/svg+xml"];
+        if (!allowedTypes.includes(file.type.toLowerCase())) {
+            return alert("Invalid file type. Only JPEG, PNG, WEBP, GIF, and SVG images are allowed.");
+        }
+
         setImageUploadStatus(`Uploading ${file.name}...`);
 
         try {
@@ -316,10 +338,7 @@ export default function AdminDashboard() {
             <div className="min-h-screen bg-slate-50 text-slate-900 font-sans antialiased flex items-center justify-center p-4">
                 <Card className="w-full max-w-md bg-white border-slate-200 shadow-xl rounded-2xl p-2">
                     <CardHeader className="text-center pb-4 pt-6">
-                        <div className="mx-auto w-12 h-12 bg-slate-900 text-white rounded-xl flex items-center justify-center font-bold text-lg mb-3 shadow-md">
-                            RR
-                        </div>
-                        <CardTitle className="text-xl font-bold text-slate-900">CMS Authentication</CardTitle>
+                        <CardTitle className="text-xl font-bold text-slate-900">Authentication</CardTitle>
                         <CardDescription className="text-xs text-slate-500">
                             Enter your Personal Access Token (PAT) to unlock the Admin Dashboard
                         </CardDescription>
@@ -384,11 +403,7 @@ export default function AdminDashboard() {
                             </Button>
                         </form>
 
-                        <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
-                            <span className="flex items-center gap-1">
-                                <Lock className="w-3 h-3 text-slate-400" />
-                                Client-side validation only
-                            </span>
+                        <div className="pt-3 border-t border-slate-100 flex items-center justify-center text-[11px] text-slate-400">
                             <a href="/" className="text-slate-600 hover:underline flex items-center gap-1 font-medium cursor-pointer">
                                 <ArrowLeft className="w-3 h-3" />
                                 Back to site
@@ -409,13 +424,7 @@ export default function AdminDashboard() {
                     {/* Brand Header */}
                     <div className="p-5 border-b border-slate-200 flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold text-xs shadow-xs">
-                                RR
-                            </div>
-                            <div className="flex flex-col">
-                                <span className="font-bold text-sm text-slate-900 tracking-tight">Rafie CMS</span>
-                                <span className="text-[10px] text-slate-500 font-mono">shadcn light mode</span>
-                            </div>
+                            <span className="font-bold text-sm text-slate-900 tracking-tight">CMS Portfolio</span>
                         </div>
                     </div>
 
@@ -819,7 +828,7 @@ export default function AdminDashboard() {
                                                             copy[idx].links = copy[idx].links?.filter((_, i) => i !== lIdx);
                                                             setData({ ...data, projects: copy });
                                                         }}
-                                                        className="p-1.5 text-slate-400 hover:text-red-600 cursor-pointer"
+                                                        className="p-1.5 text-slate-400 hover:text-red-600"
                                                     >
                                                         <X className="w-3.5 h-3.5" />
                                                     </button>
@@ -1153,7 +1162,7 @@ export default function AdminDashboard() {
                                         </div>
                                         <button
                                             onClick={() => setData({ ...data, languages: data.languages.filter((_, i) => i !== idx)} )}
-                                            className="p-1.5 text-slate-400 hover:text-red-600 cursor-pointer"
+                                            className="p-1.5 text-slate-400 hover:text-red-600"
                                         >
                                             <Trash2 className="w-4 h-4" />
                                         </button>

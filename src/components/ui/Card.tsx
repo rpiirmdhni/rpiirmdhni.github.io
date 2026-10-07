@@ -11,7 +11,7 @@ function Card({ className, id, ...props }: CardProps) {
             id={id}
             data-slot="card"
             className={cn(
-                "border border-taupe-950/15 rounded-2xl w-full h-fit flex flex-col bg-card text-card-foreground shadow-xs p-5 [&:has([data-slot=card-header])]:p-0 [&:has([data-slot=card-content])]:p-0 [&:has([data-slot=card-footer])]:p-0",
+                "border border-taupe-950/15 p-6 rounded-2xl w-full h-fit flex flex-col gap-6 [&:has([data-slot=card-header])]:p-0 [&:has([data-slot=card-content])]:p-0 [&:has([data-slot=card-footer])]:p-0",
                 className
             )}
             {...props}
