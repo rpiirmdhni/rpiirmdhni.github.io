@@ -7,16 +7,24 @@ import {
     BarChart3,
     Briefcase,
     CheckCircle2,
+    ExternalLink,
     FolderKanban,
     Globe,
     GraduationCap,
     Key,
+    LayoutDashboard,
     Loader2,
+    Lock,
+    LogOut,
     Plus,
+    RefreshCw,
     Save,
+    Settings,
+    ShieldAlert,
     ShieldCheck,
     Trash2,
     Upload,
+    UserCheck,
     Wrench,
     X,
 } from "lucide-react";
@@ -70,37 +78,118 @@ type PortfolioData = {
     aboutStats: StatItem[];
 };
 
-export default function AdminPage() {
+export default function AdminDashboard() {
     const [token, setToken] = useState("");
     const [repo, setRepo] = useState("rpiirmdhni/rpiirmdhni.github.io");
-    const [isConfigured, setIsConfigured] = useState(false);
     const [data, setData] = useState<PortfolioData>(initialPortfolioData as PortfolioData);
-    const [activeTab, setActiveTab] = useState<"projects" | "experiences" | "educations" | "skills" | "languages" | "stats">("projects");
+    const [activeTab, setActiveTab] = useState<"overview" | "projects" | "experiences" | "educations" | "skills" | "languages" | "stats" | "settings">("overview");
+
     const [status, setStatus] = useState<{ type: "idle" | "loading" | "success" | "error"; message: string }>({ type: "idle", message: "" });
     const [imageUploadStatus, setImageUploadStatus] = useState<string>("");
 
+    const [tokenValidation, setTokenValidation] = useState<{
+        status: "idle" | "testing" | "valid" | "invalid";
+        message: string;
+        userLogin?: string;
+        canPush?: boolean;
+    }>({ status: "idle", message: "" });
+
+    // Load credentials on mount and run validation
     useEffect(() => {
-        const savedToken = localStorage.getItem("cms_github_token");
-        const savedRepo = localStorage.getItem("cms_github_repo");
+        const savedToken = localStorage.getItem("cms_github_token") || "";
+        const savedRepo = localStorage.getItem("cms_github_repo") || "rpiirmdhni/rpiirmdhni.github.io";
+
         if (savedToken) {
             setToken(savedToken);
-            setIsConfigured(true);
+            setRepo(savedRepo);
+            validateToken(savedToken, savedRepo);
         }
-        if (savedRepo) setRepo(savedRepo);
     }, []);
 
-    const handleSaveConfig = () => {
-        if (!token.trim()) return alert("Please enter a valid GitHub Personal Access Token");
+    // Real-time API Key / Token Validation
+    const validateToken = async (testToken: string, testRepo: string) => {
+        if (!testToken.trim()) {
+            setTokenValidation({ status: "invalid", message: "Token is empty. Please enter your GitHub Personal Access Token.", canPush: false });
+            return false;
+        }
+
+        setTokenValidation({ status: "testing", message: "Validating token & push permissions via GitHub API..." });
+
+        try {
+            const res = await fetch(`https://api.github.com/repos/${testRepo.trim()}`, {
+                headers: { Authorization: `Bearer ${testToken.trim()}` },
+            });
+
+            if (res.status === 401) {
+                setTokenValidation({
+                    status: "invalid",
+                    message: "Invalid Token: Token expired or failed authentication (HTTP 401 Unauthorized).",
+                    canPush: false,
+                });
+                return false;
+            }
+
+            if (res.status === 404) {
+                setTokenValidation({
+                    status: "invalid",
+                    message: `Repository "${testRepo}" not found or token lacks repository read permission (HTTP 404).`,
+                    canPush: false,
+                });
+                return false;
+            }
+
+            if (!res.ok) {
+                const err = await res.json();
+                setTokenValidation({
+                    status: "invalid",
+                    message: `Validation Error: ${err.message || res.statusText}`,
+                    canPush: false,
+                });
+                return false;
+            }
+
+            const repoData = await res.json();
+            const canPush = repoData.permissions?.push === true || repoData.permissions?.admin === true;
+
+            if (!canPush) {
+                setTokenValidation({
+                    status: "invalid",
+                    message: `Token valid for reading, but lacks WRITE / PUSH permissions for ${testRepo}.`,
+                    canPush: false,
+                    userLogin: repoData.owner?.login,
+                });
+                return false;
+            }
+
+            setTokenValidation({
+                status: "valid",
+                message: `Token Validated! Write & Push permissions confirmed for ${testRepo} (@${repoData.owner?.login}).`,
+                userLogin: repoData.owner?.login,
+                canPush: true,
+            });
+            return true;
+        } catch (err: unknown) {
+            const error = err as Error;
+            setTokenValidation({
+                status: "invalid",
+                message: `Connection Error: ${error.message}`,
+                canPush: false,
+            });
+            return false;
+        }
+    };
+
+    const handleSaveConfig = async () => {
+        if (!token.trim()) return alert("Please enter your GitHub Personal Access Token");
         localStorage.setItem("cms_github_token", token.trim());
         localStorage.setItem("cms_github_repo", repo.trim());
-        setIsConfigured(true);
-        setStatus({ type: "success", message: "GitHub authentication settings saved!" });
+        await validateToken(token, repo);
     };
 
     const handleDisconnect = () => {
         localStorage.removeItem("cms_github_token");
         setToken("");
-        setIsConfigured(false);
+        setTokenValidation({ status: "idle", message: "" });
         setStatus({ type: "idle", message: "" });
     };
 
@@ -113,7 +202,7 @@ export default function AdminPage() {
     };
 
     const handleFileUpload = async (file: File, callback: (url: string) => void) => {
-        if (!token) return alert("Please configure your GitHub Token first.");
+        if (!token) return alert("Please configure and validate your GitHub Token first.");
         setImageUploadStatus(`Uploading ${file.name}...`);
 
         try {
@@ -158,7 +247,7 @@ export default function AdminPage() {
 
                 const publicUrl = `/assets/img/projects/${cleanFileName}`;
                 callback(publicUrl);
-                setImageUploadStatus(`Successfully uploaded to ${publicUrl}`);
+                setImageUploadStatus(`Uploaded! Saved to ${publicUrl}`);
             };
         } catch (err: unknown) {
             const error = err as Error;
@@ -167,9 +256,12 @@ export default function AdminPage() {
     };
 
     const handleCommitToGitHub = async () => {
-        if (!token) return alert("Please enter and save your GitHub Token first.");
+        if (!token || tokenValidation.status !== "valid") {
+            const isValid = await validateToken(token, repo);
+            if (!isValid) return alert("Please configure a valid GitHub token with push access before committing.");
+        }
 
-        setStatus({ type: "loading", message: "Fetching latest repository info..." });
+        setStatus({ type: "loading", message: "Fetching latest SHA from GitHub..." });
 
         try {
             const path = "src/data/portfolio.json";
@@ -185,7 +277,7 @@ export default function AdminPage() {
             const currentFileData = await getRes.json();
             const currentSha = currentFileData.sha;
 
-            setStatus({ type: "loading", message: "Committing updated portfolio.json to GitHub..." });
+            setStatus({ type: "loading", message: "Committing portfolio.json to GitHub..." });
 
             const updatedJsonString = JSON.stringify(data, null, 2);
             const contentBase64 = utf8ToBase64(updatedJsonString);
@@ -211,7 +303,7 @@ export default function AdminPage() {
 
             setStatus({
                 type: "success",
-                message: "Changes committed successfully! GitHub Actions is building and deploying your update (~30-60s to live).",
+                message: "Pushed successfully! GitHub Actions is building and deploying your update (~30-60s to live).",
             });
         } catch (err: unknown) {
             const error = err as Error;
@@ -220,162 +312,331 @@ export default function AdminPage() {
     };
 
     return (
-        <div className="min-h-screen bg-slate-50 text-slate-900 p-4 md:p-8 font-sans antialiased">
-            <div className="max-w-6xl mx-auto flex flex-col gap-6">
-                {/* Header Navbar */}
-                <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white border border-slate-200 rounded-xl p-5 shadow-xs gap-4">
-                    <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-2">
-                            <h1 className="text-2xl font-bold tracking-tight text-slate-900">Portfolio CMS</h1>
-                            <span className="bg-slate-100 text-slate-700 text-xs font-semibold px-2.5 py-0.5 rounded-full border border-slate-200">shadcn ui</span>
+        <div className="min-h-screen bg-slate-950 text-slate-100 font-sans antialiased flex flex-col md:flex-row">
+            {/* LEFT SIDEBAR (SHADCN DASHBOARD SIDEBAR) */}
+            <aside className="w-full md:w-64 bg-slate-900 border-r border-slate-800 flex flex-col justify-between shrink-0">
+                <div className="flex flex-col">
+                    {/* Brand Header */}
+                    <div className="p-5 border-b border-slate-800 flex items-center justify-between">
+                        <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold text-sm shadow-md">
+                                RR
+                            </div>
+                            <div className="flex flex-col">
+                                <span className="font-semibold text-sm text-slate-100 tracking-tight">Rafie CMS</span>
+                                <span className="text-[10px] text-slate-400 font-mono">v1.0 • shadcn ui</span>
+                            </div>
                         </div>
-                        <p className="text-xs text-slate-500">Git-based Headless Content Manager powered by GitHub REST API</p>
+                    </div>
+
+                    {/* Navigation Items */}
+                    <nav className="p-3 flex flex-col gap-1">
+                        {[
+                            { id: "overview", label: "Overview", icon: LayoutDashboard },
+                            { id: "projects", label: "Projects", icon: FolderKanban, badge: data.projects.length },
+                            { id: "experiences", label: "Experiences", icon: Briefcase, badge: data.experiences.length },
+                            { id: "educations", label: "Educations", icon: GraduationCap, badge: data.educations.length },
+                            { id: "skills", label: "Skills", icon: Wrench, badge: data.skillGroups.length },
+                            { id: "languages", label: "Languages", icon: Globe, badge: data.languages.length },
+                            { id: "stats", label: "About Stats", icon: BarChart3 },
+                            { id: "settings", label: "API & Security", icon: Settings },
+                        ].map((item) => {
+                            const Icon = item.icon;
+                            const isActive = activeTab === item.id;
+                            return (
+                                <button
+                                    key={item.id}
+                                    onClick={() => setActiveTab(item.id as typeof activeTab)}
+                                    className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all ${isActive
+                                            ? "bg-blue-600 text-white font-semibold shadow-xs"
+                                            : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
+                                        }`}
+                                >
+                                    <div className="flex items-center gap-2.5">
+                                        <Icon className="w-4 h-4" />
+                                        <span>{item.label}</span>
+                                    </div>
+                                    {item.badge !== undefined && (
+                                        <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${isActive ? "bg-blue-700 text-white" : "bg-slate-800 text-slate-400"}`}>
+                                            {item.badge}
+                                        </span>
+                                    )}
+                                </button>
+                            );
+                        })}
+                    </nav>
+                </div>
+
+                {/* Sidebar Footer Info */}
+                <div className="p-4 border-t border-slate-800 flex flex-col gap-3">
+                    <div className="flex items-center gap-2 px-2 py-1.5 bg-slate-850 rounded-lg border border-slate-800">
+                        {tokenValidation.status === "valid" ? (
+                            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                        ) : (
+                            <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                        )}
+                        <span className="text-[11px] text-slate-300 font-mono truncate">
+                            {tokenValidation.status === "valid" ? `@${tokenValidation.userLogin || "authenticated"}` : "Not Connected"}
+                        </span>
+                    </div>
+
+                    <a
+                        href="/"
+                        target="_blank"
+                        className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs text-slate-400 hover:text-slate-200 bg-slate-800/50 hover:bg-slate-800 rounded-lg border border-slate-800 transition-colors"
+                    >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        <span>View Live Portfolio</span>
+                    </a>
+                </div>
+            </aside>
+
+            {/* MAIN CONTENT AREA */}
+            <div className="flex-1 flex flex-col min-w-0 bg-slate-950">
+                {/* TOP HEADER BAR */}
+                <header className="h-16 border-b border-slate-800 bg-slate-900/80 backdrop-blur px-6 flex items-center justify-between sticky top-0 z-30">
+                    <div className="flex items-center gap-3">
+                        <span className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Dashboard</span>
+                        <span className="text-slate-600">/</span>
+                        <span className="text-xs text-slate-200 font-semibold capitalize">{activeTab}</span>
                     </div>
 
                     <div className="flex items-center gap-3">
-                        <a
-                            href="/"
-                            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors shadow-2xs"
-                        >
-                            <ArrowLeft className="w-3.5 h-3.5" />
-                            <span>Portfolio Site</span>
-                        </a>
+                        {/* Token Validation Pill */}
+                        {tokenValidation.status === "valid" ? (
+                            <span className="inline-flex items-center gap-1.5 text-xs bg-emerald-950/60 text-emerald-400 border border-emerald-800 px-3 py-1 rounded-full font-medium">
+                                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                                <span>API Key Validated</span>
+                            </span>
+                        ) : (
+                            <button
+                                onClick={() => setActiveTab("settings")}
+                                className="inline-flex items-center gap-1.5 text-xs bg-red-950/60 text-red-400 border border-red-800 px-3 py-1 rounded-full font-medium hover:bg-red-900/40"
+                            >
+                                <ShieldAlert className="w-3.5 h-3.5 text-red-400" />
+                                <span>Configure API Key</span>
+                            </button>
+                        )}
 
                         <button
                             onClick={handleCommitToGitHub}
                             disabled={status.type === "loading"}
-                            className="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-medium px-4 py-2 rounded-lg text-xs transition-colors shadow-2xs disabled:opacity-50"
+                            className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-all shadow-md active:scale-95 disabled:opacity-50"
                         >
                             {status.type === "loading" ? (
                                 <>
                                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                    <span>Publishing...</span>
+                                    <span>Committing...</span>
                                 </>
                             ) : (
                                 <>
                                     <Save className="w-3.5 h-3.5" />
-                                    <span>Save & Commit</span>
+                                    <span>Save & Commit to GitHub</span>
                                 </>
                             )}
                         </button>
                     </div>
                 </header>
 
-                {/* Status Toast Alert */}
-                {status.message && (
-                    <div
-                        className={`flex items-center gap-3 p-4 rounded-xl text-xs font-medium border shadow-2xs ${status.type === "error"
-                            ? "bg-red-50 text-red-800 border-red-200"
-                            : status.type === "success"
-                                ? "bg-emerald-50 text-emerald-800 border-emerald-200"
-                                : "bg-sky-50 text-sky-800 border-sky-200"
-                            }`}
-                    >
-                        {status.type === "error" && <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />}
-                        {status.type === "success" && <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />}
-                        {status.type === "loading" && <Loader2 className="w-4 h-4 shrink-0 animate-spin text-sky-600" />}
-                        <span>{status.message}</span>
-                    </div>
-                )}
-
-                {/* GitHub Authentication Card */}
-                <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs flex flex-col gap-4">
-                    <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                        <div className="flex items-center gap-2">
-                            <Key className="w-4 h-4 text-slate-500" />
-                            <h2 className="text-sm font-semibold text-slate-900">GitHub Authentication</h2>
-                            {isConfigured ? (
-                                <span className="inline-flex items-center gap-1 text-[11px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full border border-emerald-200 font-medium">
-                                    <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                                    <span>Connected</span>
-                                </span>
-                            ) : (
-                                <span className="inline-flex items-center gap-1 text-[11px] bg-amber-50 text-amber-700 px-2 py-0.5 rounded-full border border-amber-200 font-medium">
-                                    <span>Not Configured</span>
-                                </span>
-                            )}
-                        </div>
-                        {isConfigured && (
-                            <button onClick={handleDisconnect} className="text-xs text-red-600 hover:text-red-700 font-medium hover:underline">
-                                Disconnect
-                            </button>
-                        )}
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="flex flex-col gap-1.5">
-                            <label className="text-xs font-medium text-slate-700">Target Repository</label>
-                            <input
-                                type="text"
-                                value={repo}
-                                onChange={(e) => setRepo(e.target.value)}
-                                className="w-full text-xs border border-slate-300 p-2.5 rounded-lg bg-slate-50/50 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-slate-900 transition-all font-mono"
-                                placeholder="owner/repository"
-                            />
-                        </div>
-
-                        <div className="flex flex-col gap-1.5">
-                            <label className="text-xs font-medium text-slate-700">Personal Access Token (PAT)</label>
-                            <input
-                                type="password"
-                                value={token}
-                                onChange={(e) => setToken(e.target.value)}
-                                className="w-full text-xs border border-slate-300 p-2.5 rounded-lg bg-slate-50/50 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-slate-900 transition-all font-mono"
-                                placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
-                            />
-                        </div>
-                    </div>
-
-                    {!isConfigured && (
-                        <div>
-                            <button
-                                onClick={handleSaveConfig}
-                                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-medium bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors"
-                            >
-                                <Save className="w-3.5 h-3.5" />
-                                <span>Save Credentials</span>
+                {/* MAIN BODY DASHBOARD */}
+                <main className="p-6 flex flex-col gap-6 max-w-6xl w-full mx-auto">
+                    {/* Status Alert Banner */}
+                    {status.message && (
+                        <div
+                            className={`flex items-center justify-between p-4 rounded-xl text-xs font-medium border shadow-xs ${status.type === "error"
+                                    ? "bg-red-950/80 text-red-200 border-red-800"
+                                    : status.type === "success"
+                                        ? "bg-emerald-950/80 text-emerald-200 border-emerald-800"
+                                        : "bg-blue-950/80 text-blue-200 border-blue-800"
+                                }`}
+                        >
+                            <div className="flex items-center gap-3">
+                                {status.type === "error" && <AlertCircle className="w-4 h-4 shrink-0 text-red-400" />}
+                                {status.type === "success" && <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />}
+                                {status.type === "loading" && <Loader2 className="w-4 h-4 shrink-0 animate-spin text-blue-400" />}
+                                <span>{status.message}</span>
+                            </div>
+                            <button onClick={() => setStatus({ type: "idle", message: "" })} className="text-slate-400 hover:text-white">
+                                <X className="w-4 h-4" />
                             </button>
                         </div>
                     )}
-                </div>
 
-                {/* Tab Navigation Controls */}
-                <div className="bg-white border border-slate-200 rounded-xl p-1.5 shadow-xs flex overflow-x-auto gap-1">
-                    {[
-                        { id: "projects", label: "Projects", icon: FolderKanban },
-                        { id: "experiences", label: "Experiences", icon: Briefcase },
-                        { id: "educations", label: "Educations", icon: GraduationCap },
-                        { id: "skills", label: "Skills", icon: Wrench },
-                        { id: "languages", label: "Languages", icon: Globe },
-                        { id: "stats", label: "About Stats", icon: BarChart3 },
-                    ].map((tab) => {
-                        const Icon = tab.icon;
-                        const isActive = activeTab === tab.id;
-                        return (
-                            <button
-                                key={tab.id}
-                                onClick={() => setActiveTab(tab.id as typeof activeTab)}
-                                className={`flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium rounded-lg transition-all whitespace-nowrap ${isActive
-                                    ? "bg-slate-900 text-white shadow-2xs"
-                                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
-                                    }`}
-                            >
-                                <Icon className="w-3.5 h-3.5" />
-                                <span>{tab.label}</span>
-                            </button>
-                        );
-                    })}
-                </div>
+                    {/* OVERVIEW SCREEN */}
+                    {activeTab === "overview" && (
+                        <div className="flex flex-col gap-6">
+                            {/* Security Notice Card */}
+                            <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                                <div className="flex items-start gap-3">
+                                    <div className="p-2.5 bg-blue-950 border border-blue-800 text-blue-400 rounded-lg shrink-0">
+                                        <Lock className="w-5 h-5" />
+                                    </div>
+                                    <div className="flex flex-col gap-1">
+                                        <h3 className="text-sm font-semibold text-slate-100">🔒 Privacy & Access Control</h3>
+                                        <p className="text-xs text-slate-400 leading-relaxed max-w-2xl">
+                                            Your Personal Access Token is stored <strong>exclusively in your local browser storage</strong> (`localStorage`).
+                                            No unauthorized users can commit changes to your repository because only your local browser holds your secret API key.
+                                        </p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => validateToken(token, repo)}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-300 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg transition-colors whitespace-nowrap"
+                                >
+                                    <RefreshCw className="w-3.5 h-3.5" />
+                                    <span>Check Permissions</span>
+                                </button>
+                            </div>
 
-                {/* TAB CONTENT CARDS */}
-                <main className="bg-white border border-slate-200 rounded-xl p-6 shadow-xs flex flex-col gap-6">
+                            {/* Metrics Grid */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                {[
+                                    { label: "Total Projects", value: data.projects.length, sub: "Showcased items", icon: FolderKanban, tab: "projects" },
+                                    { label: "Experiences", value: data.experiences.length, sub: "Work & leadership", icon: Briefcase, tab: "experiences" },
+                                    { label: "Skill Groups", value: data.skillGroups.length, sub: `${data.skillGroups.reduce((a, b) => a + b.items.length, 0)} total tags`, icon: Wrench, tab: "skills" },
+                                    { label: "Languages", value: data.languages.length, sub: "Proficiency ratings", icon: Globe, tab: "languages" },
+                                ].map((card, i) => {
+                                    const Icon = card.icon;
+                                    return (
+                                        <div
+                                            key={i}
+                                            onClick={() => setActiveTab(card.tab as typeof activeTab)}
+                                            className="bg-slate-900 border border-slate-800 hover:border-slate-700 p-5 rounded-xl flex flex-col gap-3 cursor-pointer transition-all hover:translate-y-[-2px]"
+                                        >
+                                            <div className="flex justify-between items-center text-slate-400">
+                                                <span className="text-xs font-medium">{card.label}</span>
+                                                <Icon className="w-4 h-4 text-blue-400" />
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <span className="text-2xl font-bold text-slate-100">{card.value}</span>
+                                                <span className="text-[11px] text-slate-400">{card.sub}</span>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            {/* Quick Overview Table */}
+                            <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 flex flex-col gap-4">
+                                <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+                                    <h3 className="text-sm font-semibold text-slate-100">Live Featured Projects Overview</h3>
+                                    <button onClick={() => setActiveTab("projects")} className="text-xs text-blue-400 hover:underline">Manage All</button>
+                                </div>
+                                <div className="divide-y divide-slate-800">
+                                    {data.projects.map((proj, idx) => (
+                                        <div key={idx} className="py-3 flex items-center justify-between text-xs">
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-slate-500 font-mono">#{idx + 1}</span>
+                                                <span className="font-semibold text-slate-200">{proj.title}</span>
+                                                {proj.badge && <span className="bg-slate-800 text-slate-300 text-[10px] px-2 py-0.5 rounded-full border border-slate-700">{proj.badge}</span>}
+                                            </div>
+                                            <span className="text-slate-400 font-mono truncate max-w-xs">{proj.image}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* API SETTINGS & VALIDATION TAB */}
+                    {activeTab === "settings" && (
+                        <div className="flex flex-col gap-6 max-w-3xl">
+                            <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 flex flex-col gap-5">
+                                <div className="border-b border-slate-800 pb-3 flex justify-between items-center">
+                                    <div>
+                                        <h3 className="text-sm font-semibold text-slate-100">GitHub API Credentials & Validation</h3>
+                                        <p className="text-xs text-slate-400">Configure your Personal Access Token (PAT) and validate push access</p>
+                                    </div>
+                                    {tokenValidation.status === "valid" ? (
+                                        <span className="inline-flex items-center gap-1.5 text-xs bg-emerald-950 text-emerald-400 border border-emerald-800 px-3 py-1 rounded-full font-medium">
+                                            <UserCheck className="w-3.5 h-3.5 text-emerald-400" />
+                                            <span>Access Granted</span>
+                                        </span>
+                                    ) : (
+                                        <span className="inline-flex items-center gap-1.5 text-xs bg-red-950 text-red-400 border border-red-800 px-3 py-1 rounded-full font-medium">
+                                            <ShieldAlert className="w-3.5 h-3.5 text-red-400" />
+                                            <span>Validation Required</span>
+                                        </span>
+                                    )}
+                                </div>
+
+                                {/* Validation Output Alert Box */}
+                                {tokenValidation.message && (
+                                    <div
+                                        className={`p-4 rounded-lg text-xs font-mono border flex items-start gap-2.5 ${tokenValidation.status === "valid"
+                                                ? "bg-emerald-950/60 border-emerald-800 text-emerald-300"
+                                                : tokenValidation.status === "testing"
+                                                    ? "bg-blue-950/60 border-blue-800 text-blue-300"
+                                                    : "bg-red-950/60 border-red-800 text-red-300"
+                                            }`}
+                                    >
+                                        {tokenValidation.status === "testing" && <Loader2 className="w-4 h-4 animate-spin shrink-0 text-blue-400" />}
+                                        {tokenValidation.status === "valid" && <ShieldCheck className="w-4 h-4 shrink-0 text-emerald-400" />}
+                                        {tokenValidation.status === "invalid" && <ShieldAlert className="w-4 h-4 shrink-0 text-red-400" />}
+                                        <div className="flex flex-col gap-1">
+                                            <span className="font-semibold">Validation Result:</span>
+                                            <span>{tokenValidation.message}</span>
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="flex flex-col gap-4">
+                                    <div className="flex flex-col gap-1.5">
+                                        <label className="text-xs font-medium text-slate-300">Target Repository (owner/repo)</label>
+                                        <input
+                                            type="text"
+                                            value={repo}
+                                            onChange={(e) => setRepo(e.target.value)}
+                                            className="w-full text-xs border border-slate-700 p-2.5 rounded-lg bg-slate-950 text-slate-100 focus:outline-hidden focus:border-blue-500 font-mono"
+                                            placeholder="rpiirmdhni/rpiirmdhni.github.io"
+                                        />
+                                    </div>
+
+                                    <div className="flex flex-col gap-1.5">
+                                        <label className="text-xs font-medium text-slate-300">Personal Access Token (PAT)</label>
+                                        <input
+                                            type="password"
+                                            value={token}
+                                            onChange={(e) => setToken(e.target.value)}
+                                            className="w-full text-xs border border-slate-700 p-2.5 rounded-lg bg-slate-950 text-slate-100 focus:outline-hidden focus:border-blue-500 font-mono"
+                                            placeholder="ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                                        />
+                                        <span className="text-[11px] text-slate-500">
+                                            Token requires `contents: write` or `repo` scope permissions.
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-3 pt-2">
+                                    <button
+                                        onClick={handleSaveConfig}
+                                        className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors"
+                                    >
+                                        <Key className="w-3.5 h-3.5" />
+                                        <span>Save & Test Token</span>
+                                    </button>
+
+                                    {token && (
+                                        <button
+                                            onClick={handleDisconnect}
+                                            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-red-400 hover:text-red-300 bg-red-950/40 border border-red-800/60 rounded-lg transition-colors"
+                                        >
+                                            <LogOut className="w-3.5 h-3.5" />
+                                            <span>Clear Saved Credentials</span>
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {/* PROJECTS TAB */}
                     {activeTab === "projects" && (
-                        <div className="flex flex-col gap-6">
-                            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                        <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 flex flex-col gap-6">
+                            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
                                 <div>
-                                    <h3 className="text-base font-semibold text-slate-900">Featured Projects</h3>
-                                    <p className="text-xs text-slate-500">Manage your project showcase entries, images and repository links</p>
+                                    <h3 className="text-sm font-semibold text-slate-100">Featured Projects ({data.projects.length})</h3>
+                                    <p className="text-xs text-slate-400">Manage showcase cards, upload images, and configure link actions</p>
                                 </div>
                                 <button
                                     onClick={() =>
@@ -387,7 +648,7 @@ export default function AdminPage() {
                                             ],
                                         })
                                     }
-                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors"
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors"
                                 >
                                     <Plus className="w-3.5 h-3.5" />
                                     <span>Add Project</span>
@@ -395,20 +656,20 @@ export default function AdminPage() {
                             </div>
 
                             {imageUploadStatus && (
-                                <div className="text-xs text-sky-700 bg-sky-50 border border-sky-200 p-2.5 rounded-lg font-mono flex items-center gap-2">
-                                    <Upload className="w-3.5 h-3.5 text-sky-600" />
+                                <div className="text-xs text-blue-300 bg-blue-950/80 border border-blue-800 p-3 rounded-lg font-mono flex items-center gap-2">
+                                    <Upload className="w-4 h-4 text-blue-400" />
                                     <span>{imageUploadStatus}</span>
                                 </div>
                             )}
 
                             <div className="flex flex-col gap-6">
                                 {data.projects.map((project, idx) => (
-                                    <div key={idx} className="border border-slate-200 rounded-xl p-5 bg-slate-50/50 flex flex-col gap-4">
-                                        <div className="flex justify-between items-center border-b border-slate-200/60 pb-2">
-                                            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Project #{idx + 1}</span>
+                                    <div key={idx} className="border border-slate-800 rounded-xl p-5 bg-slate-950/60 flex flex-col gap-4">
+                                        <div className="flex justify-between items-center border-b border-slate-800/80 pb-2">
+                                            <span className="text-xs font-mono font-bold text-slate-500">PROJECT #{idx + 1}</span>
                                             <button
                                                 onClick={() => setData({ ...data, projects: data.projects.filter((_, i) => i !== idx) })}
-                                                className="inline-flex items-center gap-1 text-xs text-red-600 hover:text-red-700 font-medium"
+                                                className="inline-flex items-center gap-1 text-xs text-red-400 hover:text-red-300 font-medium"
                                             >
                                                 <Trash2 className="w-3.5 h-3.5" />
                                                 <span>Delete</span>
@@ -416,8 +677,8 @@ export default function AdminPage() {
                                         </div>
 
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div className="flex flex-col gap-1">
-                                                <label className="text-xs font-medium text-slate-700">Project Title</label>
+                                            <div className="flex flex-col gap-1.5">
+                                                <label className="text-xs font-medium text-slate-300">Project Title</label>
                                                 <input
                                                     type="text"
                                                     value={project.title}
@@ -426,12 +687,12 @@ export default function AdminPage() {
                                                         copy[idx].title = e.target.value;
                                                         setData({ ...data, projects: copy });
                                                     }}
-                                                    className="w-full text-xs border border-slate-300 p-2.5 rounded-lg bg-white"
+                                                    className="w-full text-xs border border-slate-700 p-2.5 rounded-lg bg-slate-900 text-slate-100"
                                                 />
                                             </div>
 
-                                            <div className="flex flex-col gap-1">
-                                                <label className="text-xs font-medium text-slate-700">Badge Tag (Optional)</label>
+                                            <div className="flex flex-col gap-1.5">
+                                                <label className="text-xs font-medium text-slate-300">Badge Tag (Optional)</label>
                                                 <input
                                                     type="text"
                                                     value={project.badge || ""}
@@ -440,14 +701,14 @@ export default function AdminPage() {
                                                         copy[idx].badge = e.target.value || undefined;
                                                         setData({ ...data, projects: copy });
                                                     }}
-                                                    className="w-full text-xs border border-slate-300 p-2.5 rounded-lg bg-white"
-                                                    placeholder="e.g. Private / Open-Source"
+                                                    className="w-full text-xs border border-slate-700 p-2.5 rounded-lg bg-slate-900 text-slate-100"
+                                                    placeholder="e.g. Private"
                                                 />
                                             </div>
                                         </div>
 
-                                        <div className="flex flex-col gap-1">
-                                            <label className="text-xs font-medium text-slate-700">Image Asset Path / Direct Upload</label>
+                                        <div className="flex flex-col gap-1.5">
+                                            <label className="text-xs font-medium text-slate-300">Image Asset Path / Upload</label>
                                             <div className="flex gap-2 items-center">
                                                 <input
                                                     type="text"
@@ -457,11 +718,11 @@ export default function AdminPage() {
                                                         copy[idx].image = e.target.value;
                                                         setData({ ...data, projects: copy });
                                                     }}
-                                                    className="w-full text-xs border border-slate-300 p-2.5 rounded-lg bg-white font-mono"
+                                                    className="w-full text-xs border border-slate-700 p-2.5 rounded-lg bg-slate-900 text-slate-100 font-mono"
                                                 />
-                                                <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors whitespace-nowrap">
+                                                <label className="cursor-pointer inline-flex items-center gap-1.5 px-3.5 py-2.5 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg transition-colors whitespace-nowrap">
                                                     <Upload className="w-3.5 h-3.5" />
-                                                    <span>Upload Asset</span>
+                                                    <span>Upload File</span>
                                                     <input
                                                         type="file"
                                                         accept="image/*"
@@ -481,8 +742,8 @@ export default function AdminPage() {
                                             </div>
                                         </div>
 
-                                        <div className="flex flex-col gap-1">
-                                            <label className="text-xs font-medium text-slate-700">Description</label>
+                                        <div className="flex flex-col gap-1.5">
+                                            <label className="text-xs font-medium text-slate-300">Description</label>
                                             <textarea
                                                 rows={2}
                                                 value={project.description}
@@ -491,24 +752,24 @@ export default function AdminPage() {
                                                     copy[idx].description = e.target.value;
                                                     setData({ ...data, projects: copy });
                                                 }}
-                                                className="w-full text-xs border border-slate-300 p-2.5 rounded-lg bg-white"
+                                                className="w-full text-xs border border-slate-700 p-2.5 rounded-lg bg-slate-900 text-slate-100"
                                             />
                                         </div>
 
-                                        {/* Project Links Section */}
-                                        <div className="flex flex-col gap-2 pt-2 border-t border-slate-200/60">
+                                        {/* Links */}
+                                        <div className="flex flex-col gap-2 pt-3 border-t border-slate-800">
                                             <div className="flex justify-between items-center">
-                                                <label className="text-xs font-semibold text-slate-900">Project Action Buttons / Links</label>
+                                                <label className="text-xs font-semibold text-slate-300">Action Button Links</label>
                                                 <button
                                                     onClick={() => {
                                                         const copy = [...data.projects];
                                                         copy[idx].links = [...(copy[idx].links || []), { type: "github", href: "", label: "View Link" }];
                                                         setData({ ...data, projects: copy });
                                                     }}
-                                                    className="inline-flex items-center gap-1 text-xs text-sky-600 hover:text-sky-700 font-medium"
+                                                    className="inline-flex items-center gap-1 text-xs text-blue-400 font-medium hover:underline"
                                                 >
-                                                    <Plus className="w-3 h-3" />
-                                                    <span>Add Link Button</span>
+                                                    <Plus className="w-3.5 h-3.5" />
+                                                    <span>Add Link</span>
                                                 </button>
                                             </div>
 
@@ -521,7 +782,7 @@ export default function AdminPage() {
                                                             if (copy[idx].links) copy[idx].links![lIdx].type = e.target.value as ProjectLink["type"];
                                                             setData({ ...data, projects: copy });
                                                         }}
-                                                        className="text-xs border border-slate-300 p-2 rounded-lg bg-white"
+                                                        className="text-xs border border-slate-700 p-2 rounded-lg bg-slate-900 text-slate-100"
                                                     >
                                                         <option value="github">GitHub</option>
                                                         <option value="npm">NPM</option>
@@ -535,8 +796,8 @@ export default function AdminPage() {
                                                             if (copy[idx].links) copy[idx].links![lIdx].label = e.target.value;
                                                             setData({ ...data, projects: copy });
                                                         }}
-                                                        placeholder="Label"
-                                                        className="text-xs border border-slate-300 p-2 rounded-lg bg-white w-1/3"
+                                                        placeholder="Button Label"
+                                                        className="text-xs border border-slate-700 p-2 rounded-lg bg-slate-900 text-slate-100 w-1/3"
                                                     />
                                                     <input
                                                         type="text"
@@ -546,8 +807,8 @@ export default function AdminPage() {
                                                             if (copy[idx].links) copy[idx].links![lIdx].href = e.target.value;
                                                             setData({ ...data, projects: copy });
                                                         }}
-                                                        placeholder="https://..."
-                                                        className="text-xs border border-slate-300 p-2 rounded-lg bg-white w-full font-mono"
+                                                        placeholder="URL"
+                                                        className="text-xs border border-slate-700 p-2 rounded-lg bg-slate-900 text-slate-100 w-full font-mono"
                                                     />
                                                     <button
                                                         onClick={() => {
@@ -555,7 +816,7 @@ export default function AdminPage() {
                                                             copy[idx].links = copy[idx].links?.filter((_, i) => i !== lIdx);
                                                             setData({ ...data, projects: copy });
                                                         }}
-                                                        className="p-1.5 text-slate-400 hover:text-red-600 transition-colors"
+                                                        className="p-1.5 text-slate-500 hover:text-red-400"
                                                     >
                                                         <X className="w-3.5 h-3.5" />
                                                     </button>
@@ -570,11 +831,11 @@ export default function AdminPage() {
 
                     {/* EXPERIENCES TAB */}
                     {activeTab === "experiences" && (
-                        <div className="flex flex-col gap-6">
-                            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                        <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 flex flex-col gap-6">
+                            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
                                 <div>
-                                    <h3 className="text-base font-semibold text-slate-900">Work & Leadership Experiences</h3>
-                                    <p className="text-xs text-slate-500">Timeline of professional experience, founder roles and memberships</p>
+                                    <h3 className="text-sm font-semibold text-slate-100">Work & Leadership Experiences</h3>
+                                    <p className="text-xs text-slate-400">Timeline of professional experience, founder roles and memberships</p>
                                 </div>
                                 <button
                                     onClick={() =>
@@ -583,7 +844,7 @@ export default function AdminPage() {
                                             experiences: [{ period: "2026 - Present", title: "New Role", organization: "Organization Name", current: true }, ...data.experiences],
                                         })
                                     }
-                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors"
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors"
                                 >
                                     <Plus className="w-3.5 h-3.5" />
                                     <span>Add Experience</span>
@@ -592,12 +853,12 @@ export default function AdminPage() {
 
                             <div className="flex flex-col gap-4">
                                 {data.experiences.map((exp, idx) => (
-                                    <div key={idx} className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 flex flex-col gap-3">
+                                    <div key={idx} className="border border-slate-800 rounded-xl p-4 bg-slate-950/60 flex flex-col gap-3">
                                         <div className="flex justify-between items-center">
-                                            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Entry #{idx + 1}</span>
+                                            <span className="text-xs font-mono font-bold text-slate-500">ENTRY #{idx + 1}</span>
                                             <button
                                                 onClick={() => setData({ ...data, experiences: data.experiences.filter((_, i) => i !== idx) })}
-                                                className="inline-flex items-center gap-1 text-xs text-red-600 hover:text-red-700 font-medium"
+                                                className="inline-flex items-center gap-1 text-xs text-red-400 hover:text-red-300 font-medium"
                                             >
                                                 <Trash2 className="w-3.5 h-3.5" />
                                                 <span>Delete</span>
@@ -613,8 +874,8 @@ export default function AdminPage() {
                                                     copy[idx].period = e.target.value;
                                                     setData({ ...data, experiences: copy });
                                                 }}
-                                                placeholder="Period (e.g. 2025 - Present)"
-                                                className="text-xs border border-slate-300 p-2 rounded-lg bg-white"
+                                                placeholder="Period"
+                                                className="text-xs border border-slate-700 p-2 rounded-lg bg-slate-900 text-slate-100"
                                             />
                                             <input
                                                 type="text"
@@ -625,7 +886,7 @@ export default function AdminPage() {
                                                     setData({ ...data, experiences: copy });
                                                 }}
                                                 placeholder="Role / Title"
-                                                className="text-xs border border-slate-300 p-2 rounded-lg bg-white"
+                                                className="text-xs border border-slate-700 p-2 rounded-lg bg-slate-900 text-slate-100"
                                             />
                                             <input
                                                 type="text"
@@ -635,8 +896,8 @@ export default function AdminPage() {
                                                     copy[idx].organization = e.target.value;
                                                     setData({ ...data, experiences: copy });
                                                 }}
-                                                placeholder="Company / Organization"
-                                                className="text-xs border border-slate-300 p-2 rounded-lg bg-white"
+                                                placeholder="Organization"
+                                                className="text-xs border border-slate-700 p-2 rounded-lg bg-slate-900 text-slate-100"
                                             />
                                             <input
                                                 type="text"
@@ -647,11 +908,11 @@ export default function AdminPage() {
                                                     setData({ ...data, experiences: copy });
                                                 }}
                                                 placeholder="Badge (e.g. Freelance)"
-                                                className="text-xs border border-slate-300 p-2 rounded-lg bg-white"
+                                                className="text-xs border border-slate-700 p-2 rounded-lg bg-slate-900 text-slate-100"
                                             />
                                         </div>
 
-                                        <label className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
+                                        <label className="flex items-center gap-2 text-xs text-slate-400 cursor-pointer">
                                             <input
                                                 type="checkbox"
                                                 checked={exp.current}
@@ -660,7 +921,7 @@ export default function AdminPage() {
                                                     copy[idx].current = e.target.checked;
                                                     setData({ ...data, experiences: copy });
                                                 }}
-                                                className="rounded border-slate-300 text-slate-900 focus:ring-slate-900"
+                                                className="rounded border-slate-700 bg-slate-900 text-blue-600"
                                             />
                                             <span>Current / Ongoing Role (Blue Dot Indicator)</span>
                                         </label>
@@ -672,11 +933,11 @@ export default function AdminPage() {
 
                     {/* EDUCATIONS TAB */}
                     {activeTab === "educations" && (
-                        <div className="flex flex-col gap-6">
-                            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                        <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 flex flex-col gap-6">
+                            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
                                 <div>
-                                    <h3 className="text-base font-semibold text-slate-900">Education Timeline</h3>
-                                    <p className="text-xs text-slate-500">Academic institutions and degree programs</p>
+                                    <h3 className="text-sm font-semibold text-slate-100">Education Timeline</h3>
+                                    <p className="text-xs text-slate-400">Academic institutions and degree programs</p>
                                 </div>
                                 <button
                                     onClick={() =>
@@ -685,7 +946,7 @@ export default function AdminPage() {
                                             educations: [{ period: "2026 - Present", title: "Field of Study", organization: "Institution Name", current: true }, ...data.educations],
                                         })
                                     }
-                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors"
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors"
                                 >
                                     <Plus className="w-3.5 h-3.5" />
                                     <span>Add Education</span>
@@ -694,12 +955,12 @@ export default function AdminPage() {
 
                             <div className="flex flex-col gap-4">
                                 {data.educations.map((edu, idx) => (
-                                    <div key={idx} className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 flex flex-col gap-3">
+                                    <div key={idx} className="border border-slate-800 rounded-xl p-4 bg-slate-950/60 flex flex-col gap-3">
                                         <div className="flex justify-between items-center">
-                                            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Entry #{idx + 1}</span>
+                                            <span className="text-xs font-mono font-bold text-slate-500">ENTRY #{idx + 1}</span>
                                             <button
                                                 onClick={() => setData({ ...data, educations: data.educations.filter((_, i) => i !== idx) })}
-                                                className="inline-flex items-center gap-1 text-xs text-red-600 hover:text-red-700 font-medium"
+                                                className="inline-flex items-center gap-1 text-xs text-red-400 hover:text-red-300 font-medium"
                                             >
                                                 <Trash2 className="w-3.5 h-3.5" />
                                                 <span>Delete</span>
@@ -716,7 +977,7 @@ export default function AdminPage() {
                                                     setData({ ...data, educations: copy });
                                                 }}
                                                 placeholder="Period"
-                                                className="text-xs border border-slate-300 p-2 rounded-lg bg-white"
+                                                className="text-xs border border-slate-700 p-2 rounded-lg bg-slate-900 text-slate-100"
                                             />
                                             <input
                                                 type="text"
@@ -727,7 +988,7 @@ export default function AdminPage() {
                                                     setData({ ...data, educations: copy });
                                                 }}
                                                 placeholder="Major / Field of Study"
-                                                className="text-xs border border-slate-300 p-2 rounded-lg bg-white"
+                                                className="text-xs border border-slate-700 p-2 rounded-lg bg-slate-900 text-slate-100"
                                             />
                                             <input
                                                 type="text"
@@ -738,11 +999,11 @@ export default function AdminPage() {
                                                     setData({ ...data, educations: copy });
                                                 }}
                                                 placeholder="School / University"
-                                                className="text-xs border border-slate-300 p-2 rounded-lg bg-white"
+                                                className="text-xs border border-slate-700 p-2 rounded-lg bg-slate-900 text-slate-100"
                                             />
                                         </div>
 
-                                        <label className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
+                                        <label className="flex items-center gap-2 text-xs text-slate-400 cursor-pointer">
                                             <input
                                                 type="checkbox"
                                                 checked={edu.current}
@@ -751,7 +1012,7 @@ export default function AdminPage() {
                                                     copy[idx].current = e.target.checked;
                                                     setData({ ...data, educations: copy });
                                                 }}
-                                                className="rounded border-slate-300 text-slate-900 focus:ring-slate-900"
+                                                className="rounded border-slate-700 bg-slate-900 text-blue-600"
                                             />
                                             <span>Currently Studying (Blue Dot Indicator)</span>
                                         </label>
@@ -763,15 +1024,15 @@ export default function AdminPage() {
 
                     {/* SKILLS TAB */}
                     {activeTab === "skills" && (
-                        <div className="flex flex-col gap-6">
-                            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                        <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 flex flex-col gap-6">
+                            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
                                 <div>
-                                    <h3 className="text-base font-semibold text-slate-900">Technical & Soft Skills</h3>
-                                    <p className="text-xs text-slate-500">Group skills by categories (Tech Stack, Design, Tools, Soft Skills)</p>
+                                    <h3 className="text-sm font-semibold text-slate-100">Technical & Soft Skill Categories</h3>
+                                    <p className="text-xs text-slate-400">Group skills by category title and comma-separated tags</p>
                                 </div>
                                 <button
                                     onClick={() => setData({ ...data, skillGroups: [...data.skillGroups, { title: "New Category", items: ["Skill Item"] }] })}
-                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors"
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors"
                                 >
                                     <Plus className="w-3.5 h-3.5" />
                                     <span>Add Category</span>
@@ -780,7 +1041,7 @@ export default function AdminPage() {
 
                             <div className="flex flex-col gap-6">
                                 {data.skillGroups.map((group, sIdx) => (
-                                    <div key={sIdx} className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 flex flex-col gap-3">
+                                    <div key={sIdx} className="border border-slate-800 rounded-xl p-4 bg-slate-950/60 flex flex-col gap-3">
                                         <div className="flex justify-between items-center">
                                             <input
                                                 type="text"
@@ -790,19 +1051,19 @@ export default function AdminPage() {
                                                     copy[sIdx].title = e.target.value;
                                                     setData({ ...data, skillGroups: copy });
                                                 }}
-                                                className="text-xs font-bold border border-slate-300 p-2 rounded-lg bg-white w-60"
+                                                className="text-xs font-bold border border-slate-700 p-2 rounded-lg bg-slate-900 text-slate-100 w-60"
                                             />
                                             <button
                                                 onClick={() => setData({ ...data, skillGroups: data.skillGroups.filter((_, i) => i !== sIdx) })}
-                                                className="inline-flex items-center gap-1 text-xs text-red-600 hover:text-red-700 font-medium"
+                                                className="inline-flex items-center gap-1 text-xs text-red-400 hover:text-red-300 font-medium"
                                             >
                                                 <Trash2 className="w-3.5 h-3.5" />
                                                 <span>Delete Category</span>
                                             </button>
                                         </div>
 
-                                        <div className="flex flex-col gap-1">
-                                            <label className="text-xs font-medium text-slate-700">Skill Tags (Comma-separated)</label>
+                                        <div className="flex flex-col gap-1.5">
+                                            <label className="text-xs font-medium text-slate-400">Items (comma-separated)</label>
                                             <textarea
                                                 rows={2}
                                                 value={group.items.join(", ")}
@@ -811,7 +1072,7 @@ export default function AdminPage() {
                                                     copy[sIdx].items = e.target.value.split(",").map((s) => s.trim()).filter(Boolean);
                                                     setData({ ...data, skillGroups: copy });
                                                 }}
-                                                className="w-full text-xs border border-slate-300 p-2.5 rounded-lg bg-white font-mono"
+                                                className="w-full text-xs border border-slate-700 p-2.5 rounded-lg bg-slate-900 text-slate-100 font-mono"
                                             />
                                         </div>
                                     </div>
@@ -822,15 +1083,15 @@ export default function AdminPage() {
 
                     {/* LANGUAGES TAB */}
                     {activeTab === "languages" && (
-                        <div className="flex flex-col gap-6">
-                            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                        <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 flex flex-col gap-6">
+                            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
                                 <div>
-                                    <h3 className="text-base font-semibold text-slate-900">Languages & Proficiency</h3>
-                                    <p className="text-xs text-slate-500">Language fluency and visual progress bar percentages</p>
+                                    <h3 className="text-sm font-semibold text-slate-100">Languages & Fluency</h3>
+                                    <p className="text-xs text-slate-400">Language ratings and progress bar percentages</p>
                                 </div>
                                 <button
                                     onClick={() => setData({ ...data, languages: [...data.languages, { name: "Language", level: "Proficiency Level", percent: 80 }] })}
-                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors"
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors"
                                 >
                                     <Plus className="w-3.5 h-3.5" />
                                     <span>Add Language</span>
@@ -839,7 +1100,7 @@ export default function AdminPage() {
 
                             <div className="flex flex-col gap-4">
                                 {data.languages.map((lang, idx) => (
-                                    <div key={idx} className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 flex items-center gap-3">
+                                    <div key={idx} className="border border-slate-800 rounded-xl p-4 bg-slate-950/60 flex items-center gap-3">
                                         <input
                                             type="text"
                                             value={lang.name}
@@ -848,8 +1109,8 @@ export default function AdminPage() {
                                                 copy[idx].name = e.target.value;
                                                 setData({ ...data, languages: copy });
                                             }}
-                                            placeholder="Language Name"
-                                            className="text-xs border border-slate-300 p-2.5 rounded-lg bg-white w-1/4"
+                                            placeholder="Language"
+                                            className="text-xs border border-slate-700 p-2.5 rounded-lg bg-slate-900 text-slate-100 w-1/4"
                                         />
                                         <input
                                             type="text"
@@ -859,8 +1120,8 @@ export default function AdminPage() {
                                                 copy[idx].level = e.target.value;
                                                 setData({ ...data, languages: copy });
                                             }}
-                                            placeholder="Proficiency Level"
-                                            className="text-xs border border-slate-300 p-2.5 rounded-lg bg-white w-1/2"
+                                            placeholder="Level Description"
+                                            className="text-xs border border-slate-700 p-2.5 rounded-lg bg-slate-900 text-slate-100 w-1/2"
                                         />
                                         <div className="flex items-center gap-1 w-1/4">
                                             <input
@@ -873,13 +1134,13 @@ export default function AdminPage() {
                                                     copy[idx].percent = Number(e.target.value);
                                                     setData({ ...data, languages: copy });
                                                 }}
-                                                className="text-xs border border-slate-300 p-2.5 rounded-lg bg-white w-full"
+                                                className="text-xs border border-slate-700 p-2.5 rounded-lg bg-slate-900 text-slate-100 w-full font-mono"
                                             />
                                             <span className="text-xs font-semibold text-slate-500">%</span>
                                         </div>
                                         <button
                                             onClick={() => setData({ ...data, languages: data.languages.filter((_, i) => i !== idx) })}
-                                            className="p-1.5 text-slate-400 hover:text-red-600 transition-colors"
+                                            className="p-1.5 text-slate-500 hover:text-red-400"
                                         >
                                             <Trash2 className="w-4 h-4" />
                                         </button>
@@ -891,18 +1152,18 @@ export default function AdminPage() {
 
                     {/* STATS TAB */}
                     {activeTab === "stats" && (
-                        <div className="flex flex-col gap-6">
-                            <div className="border-b border-slate-100 pb-4">
-                                <h3 className="text-base font-semibold text-slate-900">About Me Stat Cards</h3>
-                                <p className="text-xs text-slate-500">Edit the three stat metrics shown under the About Me section</p>
+                        <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 flex flex-col gap-6">
+                            <div className="border-b border-slate-800 pb-4">
+                                <h3 className="text-sm font-semibold text-slate-100">About Me Stat Cards</h3>
+                                <p className="text-xs text-slate-400">Edit values and labels for the three main stats cards</p>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 {data.aboutStats.map((stat, idx) => (
-                                    <div key={idx} className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 flex flex-col gap-3">
-                                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Metric #{idx + 1}</span>
-                                        <div className="flex flex-col gap-1">
-                                            <label className="text-xs font-medium text-slate-700">Display Value</label>
+                                    <div key={idx} className="border border-slate-800 rounded-xl p-4 bg-slate-950/60 flex flex-col gap-3">
+                                        <span className="text-xs font-mono font-bold text-slate-500">METRIC #{idx + 1}</span>
+                                        <div className="flex flex-col gap-1.5">
+                                            <label className="text-xs font-medium text-slate-300">Display Value</label>
                                             <input
                                                 type="text"
                                                 value={stat.value}
@@ -911,13 +1172,13 @@ export default function AdminPage() {
                                                     copy[idx].value = e.target.value;
                                                     setData({ ...data, aboutStats: copy });
                                                 }}
-                                                placeholder="e.g. 19 or ~162 cm"
-                                                className="text-xs font-semibold border border-slate-300 p-2.5 rounded-lg bg-white"
+                                                placeholder="e.g. 19"
+                                                className="text-xs font-bold border border-slate-700 p-2.5 rounded-lg bg-slate-900 text-slate-100"
                                             />
                                         </div>
 
-                                        <div className="flex flex-col gap-1">
-                                            <label className="text-xs font-medium text-slate-700">Subtext Label</label>
+                                        <div className="flex flex-col gap-1.5">
+                                            <label className="text-xs font-medium text-slate-300">Label Subtext</label>
                                             <input
                                                 type="text"
                                                 value={stat.label}
@@ -926,8 +1187,8 @@ export default function AdminPage() {
                                                     copy[idx].label = e.target.value;
                                                     setData({ ...data, aboutStats: copy });
                                                 }}
-                                                placeholder="e.g. Years Old (in 2026)"
-                                                className="text-xs border border-slate-300 p-2.5 rounded-lg bg-white"
+                                                placeholder="e.g. Years Old"
+                                                className="text-xs border border-slate-700 p-2.5 rounded-lg bg-slate-900 text-slate-100"
                                             />
                                         </div>
                                     </div>
