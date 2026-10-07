@@ -19,6 +19,7 @@ import {
     Loader2,
     Lock,
     LogOut,
+    Menu,
     Plus,
     RefreshCw,
     Save,
@@ -89,6 +90,7 @@ export default function AdminDashboard() {
     const [repo, setRepo] = useState("rpiirmdhni/rpiirmdhni.github.io");
     const [data, setData] = useState<PortfolioData>(initialPortfolioData as PortfolioData);
     const [activeTab, setActiveTab] = useState<"overview" | "projects" | "experiences" | "educations" | "skills" | "languages" | "stats">("overview");
+    const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
 
     const [status, setStatus] = useState<{ type: "idle" | "loading" | "success" | "error"; message: string }>({ type: "idle", message: "" });
     const [imageUploadStatus, setImageUploadStatus] = useState<string>("");
@@ -429,15 +431,33 @@ export default function AdminDashboard() {
 
     // --- SCREEN 2: MAIN CMS DASHBOARD (LIGHT MODE + PERFECT SCROLLING) ---
     return (
-        <div className="h-screen w-screen bg-slate-50 text-slate-900 font-sans antialiased flex flex-col md:flex-row overflow-hidden">
-            {/* LIGHT SIDEBAR */}
-            <aside className="w-full md:w-64 bg-white border-r border-slate-200 flex flex-col justify-between shrink-0 h-full">
+        <div className="h-screen w-screen bg-slate-50 text-slate-900 font-sans antialiased flex flex-col md:flex-row overflow-hidden relative">
+            {/* MOBILE OVERLAY BACKDROP */}
+            {isMobileNavOpen && (
+                <div
+                    onClick={() => setIsMobileNavOpen(false)}
+                    className="fixed inset-0 bg-slate-900/40 z-40 md:hidden backdrop-blur-xs transition-opacity"
+                />
+            )}
+
+            {/* RESPONSIVE LIGHT SIDEBAR */}
+            <aside
+                className={`fixed md:static inset-y-0 left-0 z-50 transform ${
+                    isMobileNavOpen ? "translate-x-0" : "-translate-x-full"
+                } md:translate-x-0 transition-transform duration-200 ease-in-out w-64 bg-white border-r border-slate-200 flex flex-col justify-between shrink-0 h-full shadow-2xl md:shadow-none`}
+            >
                 <div className="flex flex-col">
                     {/* Brand Header */}
                     <div className="p-5 border-b border-slate-200 flex items-center justify-between">
                         <div className="flex items-center gap-3">
                             <span className="font-bold text-sm text-slate-900 tracking-tight">CMS Portfolio</span>
                         </div>
+                        <button
+                            onClick={() => setIsMobileNavOpen(false)}
+                            className="p-1 rounded-lg text-slate-400 hover:text-slate-700 md:hidden cursor-pointer"
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
                     </div>
 
                     {/* Navigation Bar */}
@@ -456,11 +476,15 @@ export default function AdminDashboard() {
                             return (
                                 <button
                                     key={item.id}
-                                    onClick={() => setActiveTab(item.id as typeof activeTab)}
-                                    className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all cursor-pointer ${isActive
+                                    onClick={() => {
+                                        setActiveTab(item.id as typeof activeTab);
+                                        setIsMobileNavOpen(false);
+                                    }}
+                                    className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                                        isActive
                                             ? "bg-slate-900 text-white font-semibold shadow-xs"
                                             : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
-                                        }`}
+                                    }`}
                                 >
                                     <div className="flex items-center gap-2.5">
                                         <Icon className="w-4 h-4" />
@@ -502,45 +526,52 @@ export default function AdminDashboard() {
                 </div>
             </aside>
 
-            {/* MAIN RIGHT CONTAINER (WITH SCROLLING FIX) */}
+            {/* MAIN RIGHT CONTAINER */}
             <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden bg-slate-50">
                 {/* STICKY TOP HEADER */}
-                <header className="h-16 border-b border-slate-200 bg-white px-6 flex items-center justify-between shrink-0">
+                <header className="h-16 border-b border-slate-200 bg-white px-4 md:px-6 flex items-center justify-between shrink-0 gap-2">
                     <div className="flex items-center gap-2.5">
-                        <span className="text-xs text-slate-400 uppercase font-semibold tracking-wider">Dashboard</span>
-                        <span className="text-slate-300">/</span>
+                        <button
+                            onClick={() => setIsMobileNavOpen(true)}
+                            className="p-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100 md:hidden cursor-pointer"
+                            title="Open Menu"
+                        >
+                            <Menu className="w-4 h-4" />
+                        </button>
+                        <span className="text-xs text-slate-400 uppercase font-semibold tracking-wider hidden sm:inline">Dashboard</span>
+                        <span className="text-slate-300 hidden sm:inline">/</span>
                         <span className="text-xs text-slate-900 font-bold capitalize">{activeTab}</span>
                     </div>
 
-                    <div className="flex items-center gap-3">
-                        <Badge variant="outline" className="bg-emerald-50 text-emerald-800 border-emerald-300 text-xs py-1 px-3 gap-1.5">
-                            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                            <span>Authenticated</span>
+                    <div className="flex items-center gap-2 sm:gap-3">
+                        <Badge variant="outline" className="bg-emerald-50 text-emerald-800 border-emerald-300 text-[11px] sm:text-xs py-1 px-2 sm:px-3 gap-1 sm:gap-1.5">
+                            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                            <span className="hidden sm:inline">Authenticated</span>
                         </Badge>
 
                         <Button
                             size="sm"
                             onClick={handleCommitToGitHub}
                             disabled={status.type === "loading"}
-                            className="bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs h-8 px-4 gap-2 shadow-xs"
+                            className="bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs h-8 px-3 sm:px-4 gap-1.5 sm:gap-2 shadow-xs cursor-pointer"
                         >
                             {status.type === "loading" ? (
                                 <>
                                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                    <span>Committing...</span>
+                                    <span>Saving...</span>
                                 </>
                             ) : (
                                 <>
                                     <Save className="w-3.5 h-3.5" />
-                                    <span>Save & Commit to GitHub</span>
+                                    <span>Save <span className="hidden sm:inline">& Commit</span></span>
                                 </>
                             )}
                         </Button>
                     </div>
                 </header>
 
-                {/* SCROLLABLE FULL-WIDTH WRAPPER (SCROLLBAR AT FAR RIGHT EDGE) */}
-                <div className="flex-1 overflow-y-auto p-6">
+                {/* SCROLLABLE FULL-WIDTH WRAPPER */}
+                <div className="flex-1 overflow-y-auto p-4 sm:p-6">
                     <main className="max-w-6xl w-full mx-auto flex flex-col gap-6">
                         {/* Status Alert Banner */}
                         {status.message && (
