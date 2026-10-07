@@ -389,7 +389,7 @@ export default function AdminDashboard() {
                                 <Lock className="w-3 h-3 text-slate-400" />
                                 Client-side validation only
                             </span>
-                            <a href="/" className="text-slate-600 hover:underline flex items-center gap-1 font-medium">
+                            <a href="/" className="text-slate-600 hover:underline flex items-center gap-1 font-medium cursor-pointer">
                                 <ArrowLeft className="w-3 h-3" />
                                 Back to site
                             </a>
@@ -436,7 +436,7 @@ export default function AdminDashboard() {
                                 <button
                                     key={item.id}
                                     onClick={() => setActiveTab(item.id as typeof activeTab)}
-                                    className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all ${isActive
+                                    className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all cursor-pointer ${isActive
                                             ? "bg-slate-900 text-white font-semibold shadow-xs"
                                             : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
                                         }`}
@@ -465,7 +465,7 @@ export default function AdminDashboard() {
                                 @{tokenValidation.userLogin || "admin"}
                             </span>
                         </div>
-                        <button onClick={handleLogout} title="Logout" className="text-slate-400 hover:text-red-600 transition-colors">
+                        <button onClick={handleLogout} title="Logout" className="text-slate-400 hover:text-red-600 transition-colors cursor-pointer">
                             <LogOut className="w-3.5 h-3.5" />
                         </button>
                     </div>
@@ -473,7 +473,7 @@ export default function AdminDashboard() {
                     <a
                         href="/"
                         target="_blank"
-                        className="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-100 rounded-lg border border-slate-200 transition-colors"
+                        className="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-100 rounded-lg border border-slate-200 transition-colors cursor-pointer"
                     >
                         <ExternalLink className="w-3.5 h-3.5 text-slate-500" />
                         <span>Live Portfolio Site</span>
@@ -518,29 +518,30 @@ export default function AdminDashboard() {
                     </div>
                 </header>
 
-                {/* SCROLLABLE MAIN CONTENT BODY (100% FIXED SCROLLING) */}
-                <main className="flex-1 overflow-y-auto p-6 flex flex-col gap-6 max-w-6xl w-full mx-auto">
-                    {/* Status Alert Banner */}
-                    {status.message && (
-                        <div
-                            className={`flex items-center justify-between p-4 rounded-xl text-xs font-medium border shadow-xs ${status.type === "error"
-                                    ? "bg-red-50 text-red-900 border-red-200"
-                                    : status.type === "success"
-                                        ? "bg-emerald-50 text-emerald-900 border-emerald-200"
-                                        : "bg-blue-50 text-blue-900 border-blue-200"
-                                }`}
-                        >
-                            <div className="flex items-center gap-3">
-                                {status.type === "error" && <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />}
-                                {status.type === "success" && <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />}
-                                {status.type === "loading" && <Loader2 className="w-4 h-4 shrink-0 animate-spin text-blue-600" />}
-                                <span>{status.message}</span>
+                {/* SCROLLABLE FULL-WIDTH WRAPPER (SCROLLBAR AT FAR RIGHT EDGE) */}
+                <div className="flex-1 overflow-y-auto p-6">
+                    <main className="max-w-6xl w-full mx-auto flex flex-col gap-6">
+                        {/* Status Alert Banner */}
+                        {status.message && (
+                            <div
+                                className={`flex items-center justify-between p-4 rounded-xl text-xs font-medium border shadow-xs ${status.type === "error"
+                                        ? "bg-red-50 text-red-900 border-red-200"
+                                        : status.type === "success"
+                                            ? "bg-emerald-50 text-emerald-900 border-emerald-200"
+                                            : "bg-blue-50 text-blue-900 border-blue-200"
+                                    }`}
+                            >
+                                <div className="flex items-center gap-3">
+                                    {status.type === "error" && <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />}
+                                    {status.type === "success" && <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />}
+                                    {status.type === "loading" && <Loader2 className="w-4 h-4 shrink-0 animate-spin text-blue-600" />}
+                                    <span>{status.message}</span>
+                                </div>
+                                <button onClick={() => setStatus({ type: "idle", message: "" })} className="text-slate-400 hover:text-slate-700 cursor-pointer">
+                                    <X className="w-4 h-4" />
+                                </button>
                             </div>
-                            <button onClick={() => setStatus({ type: "idle", message: "" })} className="text-slate-400 hover:text-slate-700">
-                                <X className="w-4 h-4" />
-                            </button>
-                        </div>
-                    )}
+                        )}
 
                     {/* OVERVIEW TAB */}
                     {activeTab === "overview" && (
@@ -818,7 +819,7 @@ export default function AdminDashboard() {
                                                             copy[idx].links = copy[idx].links?.filter((_, i) => i !== lIdx);
                                                             setData({ ...data, projects: copy });
                                                         }}
-                                                        className="p-1.5 text-slate-400 hover:text-red-600"
+                                                        className="p-1.5 text-slate-400 hover:text-red-600 cursor-pointer"
                                                     >
                                                         <X className="w-3.5 h-3.5" />
                                                     </button>
@@ -1152,7 +1153,7 @@ export default function AdminDashboard() {
                                         </div>
                                         <button
                                             onClick={() => setData({ ...data, languages: data.languages.filter((_, i) => i !== idx)} )}
-                                            className="p-1.5 text-slate-400 hover:text-red-600"
+                                            className="p-1.5 text-slate-400 hover:text-red-600 cursor-pointer"
                                         >
                                             <Trash2 className="w-4 h-4" />
                                         </button>
@@ -1210,7 +1211,8 @@ export default function AdminDashboard() {
                             </CardContent>
                         </Card>
                     )}
-                </main>
+                    </main>
+                </div>
             </div>
         </div>
     );
