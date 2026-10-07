@@ -19,12 +19,10 @@ import {
     Plus,
     RefreshCw,
     Save,
-    Settings,
     ShieldAlert,
     ShieldCheck,
     Trash2,
     Upload,
-    UserCheck,
     Wrench,
     X,
 } from "lucide-react";
@@ -33,8 +31,6 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
-
 import initialPortfolioData from "@/data/portfolio.json";
 
 type ProjectLink = {
@@ -89,7 +85,7 @@ export default function AdminDashboard() {
     const [token, setToken] = useState("");
     const [repo, setRepo] = useState("rpiirmdhni/rpiirmdhni.github.io");
     const [data, setData] = useState<PortfolioData>(initialPortfolioData as PortfolioData);
-    const [activeTab, setActiveTab] = useState<"overview" | "projects" | "experiences" | "educations" | "skills" | "languages" | "stats" | "settings">("overview");
+    const [activeTab, setActiveTab] = useState<"overview" | "projects" | "experiences" | "educations" | "skills" | "languages" | "stats">("overview");
 
     const [status, setStatus] = useState<{ type: "idle" | "loading" | "success" | "error"; message: string }>({ type: "idle", message: "" });
     const [imageUploadStatus, setImageUploadStatus] = useState<string>("");
@@ -98,9 +94,9 @@ export default function AdminDashboard() {
         status: "idle" | "testing" | "valid" | "invalid";
         message: string;
         userLogin?: string;
-        canPush?: boolean;
     }>({ status: "idle", message: "" });
 
+    // Load credentials on mount and run validation
     useEffect(() => {
         const savedToken = localStorage.getItem("cms_github_token") || "";
         const savedRepo = localStorage.getItem("cms_github_repo") || "rpiirmdhni/rpiirmdhni.github.io";
@@ -112,13 +108,14 @@ export default function AdminDashboard() {
         }
     }, []);
 
+    // Real-time API Key / Token Validation
     const validateToken = async (testToken: string, testRepo: string) => {
         if (!testToken.trim()) {
-            setTokenValidation({ status: "invalid", message: "Token is empty. Please enter your GitHub Personal Access Token.", canPush: false });
+            setTokenValidation({ status: "invalid", message: "Please enter your Personal Access Token." });
             return false;
         }
 
-        setTokenValidation({ status: "testing", message: "Validating token & push permissions via GitHub API..." });
+        setTokenValidation({ status: "testing", message: "Validating API Key with GitHub..." });
 
         try {
             const res = await fetch(`https://api.github.com/repos/${testRepo.trim()}`, {
@@ -128,8 +125,7 @@ export default function AdminDashboard() {
             if (res.status === 401) {
                 setTokenValidation({
                     status: "invalid",
-                    message: "Invalid Token: Token expired or authentication failed (HTTP 401 Unauthorized).",
-                    canPush: false,
+                    message: "Invalid API Key: Authentication failed (HTTP 401 Unauthorized).",
                 });
                 return false;
             }
@@ -137,8 +133,7 @@ export default function AdminDashboard() {
             if (res.status === 404) {
                 setTokenValidation({
                     status: "invalid",
-                    message: `Repository "${testRepo}" not found or token lacks access permission (HTTP 404).`,
-                    canPush: false,
+                    message: `Repository "${testRepo}" not found or token lacks write permission (HTTP 404).`,
                 });
                 return false;
             }
@@ -147,8 +142,7 @@ export default function AdminDashboard() {
                 const err = await res.json();
                 setTokenValidation({
                     status: "invalid",
-                    message: `Validation error: ${err.message || res.statusText}`,
-                    canPush: false,
+                    message: `Validation Error: ${err.message || res.statusText}`,
                 });
                 return false;
             }
@@ -159,18 +153,20 @@ export default function AdminDashboard() {
             if (!canPush) {
                 setTokenValidation({
                     status: "invalid",
-                    message: `Token is valid, but lacks WRITE / PUSH permissions for ${testRepo}.`,
-                    canPush: false,
+                    message: `Token valid for reading, but lacks WRITE / PUSH permissions for ${testRepo}.`,
                     userLogin: repoData.owner?.login,
                 });
                 return false;
             }
 
+            // Save valid token to local storage
+            localStorage.setItem("cms_github_token", testToken.trim());
+            localStorage.setItem("cms_github_repo", testRepo.trim());
+
             setTokenValidation({
                 status: "valid",
-                message: `Token Validated! Write & Push permissions confirmed for ${testRepo} (@${repoData.owner?.login}).`,
+                message: `Authentication Successful! Connected to ${testRepo} (@${repoData.owner?.login}).`,
                 userLogin: repoData.owner?.login,
-                canPush: true,
             });
             return true;
         } catch (err: unknown) {
@@ -178,20 +174,17 @@ export default function AdminDashboard() {
             setTokenValidation({
                 status: "invalid",
                 message: `Connection Error: ${error.message}`,
-                canPush: false,
             });
             return false;
         }
     };
 
-    const handleSaveConfig = async () => {
-        if (!token.trim()) return alert("Please enter your GitHub Personal Access Token");
-        localStorage.setItem("cms_github_token", token.trim());
-        localStorage.setItem("cms_github_repo", repo.trim());
+    const handleLogin = async (e: React.FormEvent) => {
+        e.preventDefault();
         await validateToken(token, repo);
     };
 
-    const handleDisconnect = () => {
+    const handleLogout = () => {
         localStorage.removeItem("cms_github_token");
         setToken("");
         setTokenValidation({ status: "idle", message: "" });
@@ -207,7 +200,7 @@ export default function AdminDashboard() {
     };
 
     const handleFileUpload = async (file: File, callback: (url: string) => void) => {
-        if (!token) return alert("Please configure and validate your GitHub Token first.");
+        if (!token) return alert("Please login first.");
         setImageUploadStatus(`Uploading ${file.name}...`);
 
         try {
@@ -263,10 +256,10 @@ export default function AdminDashboard() {
     const handleCommitToGitHub = async () => {
         if (!token || tokenValidation.status !== "valid") {
             const isValid = await validateToken(token, repo);
-            if (!isValid) return alert("Please configure a valid GitHub token with push access before committing.");
+            if (!isValid) return alert("Please authenticate with a valid GitHub Token first.");
         }
 
-        setStatus({ type: "loading", message: "Fetching latest SHA from GitHub..." });
+        setStatus({ type: "loading", message: "Fetching latest file SHA from GitHub..." });
 
         try {
             const path = "src/data/portfolio.json";
@@ -308,7 +301,7 @@ export default function AdminDashboard() {
 
             setStatus({
                 type: "success",
-                message: "Pushed successfully! GitHub Actions is building and deploying your update (~30-60s to live).",
+                message: "Changes committed successfully! GitHub Actions is building and deploying your update (~30-60s to live).",
             });
         } catch (err: unknown) {
             const error = err as Error;
@@ -316,25 +309,116 @@ export default function AdminDashboard() {
         }
     };
 
+    // --- SCREEN 1: LOGIN AUTHENTICATION GATE (IF NOT AUTHENTICATED) ---
+    if (tokenValidation.status !== "valid") {
+        return (
+            <div className="min-h-screen bg-slate-50 text-slate-900 font-sans antialiased flex items-center justify-center p-4">
+                <Card className="w-full max-w-md bg-white border-slate-200 shadow-xl rounded-2xl p-2">
+                    <CardHeader className="text-center pb-4 pt-6">
+                        <div className="mx-auto w-12 h-12 bg-slate-900 text-white rounded-xl flex items-center justify-center font-bold text-lg mb-3 shadow-md">
+                            RR
+                        </div>
+                        <CardTitle className="text-xl font-bold text-slate-900">CMS Authentication</CardTitle>
+                        <CardDescription className="text-xs text-slate-500">
+                            Enter your Personal Access Token (PAT) to unlock the Admin Dashboard
+                        </CardDescription>
+                    </CardHeader>
+
+                    <CardContent className="flex flex-col gap-4">
+                        {tokenValidation.message && (
+                            <div
+                                className={`p-3 rounded-lg text-xs flex items-start gap-2 border ${tokenValidation.status === "testing"
+                                        ? "bg-blue-50 border-blue-200 text-blue-800"
+                                        : "bg-red-50 border-red-200 text-red-800"
+                                    }`}
+                            >
+                                {tokenValidation.status === "testing" ? (
+                                    <Loader2 className="w-4 h-4 animate-spin shrink-0 text-blue-600" />
+                                ) : (
+                                    <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
+                                )}
+                                <span>{tokenValidation.message}</span>
+                            </div>
+                        )}
+
+                        <form onSubmit={handleLogin} className="flex flex-col gap-4">
+                            <div className="flex flex-col gap-1.5">
+                                <label className="text-xs font-semibold text-slate-700">Target Repository</label>
+                                <Input
+                                    type="text"
+                                    value={repo}
+                                    onChange={(e) => setRepo(e.target.value)}
+                                    placeholder="rpiirmdhni/rpiirmdhni.github.io"
+                                    className="bg-slate-50 border-slate-300 text-slate-900 font-mono text-xs h-10"
+                                />
+                            </div>
+
+                            <div className="flex flex-col gap-1.5">
+                                <label className="text-xs font-semibold text-slate-700">Personal Access Token (PAT)</label>
+                                <Input
+                                    type="password"
+                                    value={token}
+                                    onChange={(e) => setToken(e.target.value)}
+                                    placeholder="ghp_xxxxxxxxxxxxxxxxxxxxxxxx"
+                                    className="bg-slate-50 border-slate-300 text-slate-900 font-mono text-xs h-10"
+                                />
+                            </div>
+
+                            <Button
+                                type="submit"
+                                disabled={tokenValidation.status === "testing"}
+                                className="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold h-10 text-xs gap-2 shadow-sm mt-2"
+                            >
+                                {tokenValidation.status === "testing" ? (
+                                    <>
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                        <span>Validating Key...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Key className="w-4 h-4" />
+                                        <span>Login to Dashboard</span>
+                                    </>
+                                )}
+                            </Button>
+                        </form>
+
+                        <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
+                            <span className="flex items-center gap-1">
+                                <Lock className="w-3 h-3 text-slate-400" />
+                                Client-side validation only
+                            </span>
+                            <a href="/" className="text-slate-600 hover:underline flex items-center gap-1 font-medium">
+                                <ArrowLeft className="w-3 h-3" />
+                                Back to site
+                            </a>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+        );
+    }
+
+    // --- SCREEN 2: MAIN CMS DASHBOARD (LIGHT MODE + PERFECT SCROLLING) ---
     return (
-        <div className="min-h-screen bg-slate-950 text-slate-100 font-sans antialiased flex flex-col md:flex-row">
-            {/* SHADCN DASHBOARD SIDEBAR */}
-            <aside className="w-full md:w-64 bg-slate-900 border-r border-slate-800 flex flex-col justify-between shrink-0">
+        <div className="h-screen w-screen bg-slate-50 text-slate-900 font-sans antialiased flex flex-col md:flex-row overflow-hidden">
+            {/* LIGHT SIDEBAR */}
+            <aside className="w-full md:w-64 bg-white border-r border-slate-200 flex flex-col justify-between shrink-0 h-full">
                 <div className="flex flex-col">
                     {/* Brand Header */}
-                    <div className="p-5 border-b border-slate-800 flex items-center justify-between">
+                    <div className="p-5 border-b border-slate-200 flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold text-xs shadow-sm">
+                            <div className="w-8 h-8 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold text-xs shadow-xs">
                                 RR
                             </div>
                             <div className="flex flex-col">
-                                <span className="font-bold text-sm text-slate-100 tracking-tight">Rafie CMS</span>
-                                <span className="text-[10px] text-slate-400 font-mono">shadcn/ui official</span>
+                                <span className="font-bold text-sm text-slate-900 tracking-tight">Rafie CMS</span>
+                                <span className="text-[10px] text-slate-500 font-mono">shadcn light mode</span>
                             </div>
                         </div>
                     </div>
 
-                    {/* Sidebar Navigation */}
+                    {/* Navigation Bar */}
                     <nav className="p-3 flex flex-col gap-1">
                         {[
                             { id: "overview", label: "Overview", icon: LayoutDashboard },
@@ -344,7 +428,6 @@ export default function AdminDashboard() {
                             { id: "skills", label: "Skills", icon: Wrench, count: data.skillGroups.length },
                             { id: "languages", label: "Languages", icon: Globe, count: data.languages.length },
                             { id: "stats", label: "About Stats", icon: BarChart3 },
-                            { id: "settings", label: "API & Security", icon: Settings },
                         ].map((item) => {
                             const Icon = item.icon;
                             const isActive = activeTab === item.id;
@@ -353,8 +436,8 @@ export default function AdminDashboard() {
                                     key={item.id}
                                     onClick={() => setActiveTab(item.id as typeof activeTab)}
                                     className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all ${isActive
-                                            ? "bg-blue-600 text-white font-semibold shadow-xs"
-                                            : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
+                                            ? "bg-slate-900 text-white font-semibold shadow-xs"
+                                            : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
                                         }`}
                                 >
                                     <div className="flex items-center gap-2.5">
@@ -362,9 +445,9 @@ export default function AdminDashboard() {
                                         <span>{item.label}</span>
                                     </div>
                                     {item.count !== undefined && (
-                                        <Badge variant={isActive ? "secondary" : "outline"} className="text-[10px] px-1.5 py-0">
+                                        <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${isActive ? "bg-slate-800 text-white" : "bg-slate-100 text-slate-600 border border-slate-200"}`}>
                                             {item.count}
-                                        </Badge>
+                                        </span>
                                     )}
                                 </button>
                             );
@@ -373,62 +456,51 @@ export default function AdminDashboard() {
                 </div>
 
                 {/* Sidebar Footer */}
-                <div className="p-4 border-t border-slate-800 flex flex-col gap-3">
-                    <div className="flex items-center gap-2 px-2.5 py-2 bg-slate-950 rounded-lg border border-slate-800">
-                        {tokenValidation.status === "valid" ? (
-                            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div>
-                        ) : (
-                            <div className="w-2 h-2 rounded-full bg-red-400"></div>
-                        )}
-                        <span className="text-[11px] text-slate-300 font-mono truncate">
-                            {tokenValidation.status === "valid" ? `@${tokenValidation.userLogin || "authenticated"}` : "Disconnected"}
-                        </span>
+                <div className="p-4 border-t border-slate-200 flex flex-col gap-3">
+                    <div className="flex items-center justify-between px-3 py-2 bg-slate-50 rounded-lg border border-slate-200">
+                        <div className="flex items-center gap-2 min-w-0">
+                            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0"></div>
+                            <span className="text-xs text-slate-700 font-mono font-medium truncate">
+                                @{tokenValidation.userLogin || "admin"}
+                            </span>
+                        </div>
+                        <button onClick={handleLogout} title="Logout" className="text-slate-400 hover:text-red-600 transition-colors">
+                            <LogOut className="w-3.5 h-3.5" />
+                        </button>
                     </div>
 
                     <a
                         href="/"
                         target="_blank"
-                        className="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700/80 rounded-lg border border-slate-700 transition-colors"
+                        className="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-100 rounded-lg border border-slate-200 transition-colors"
                     >
-                        <ExternalLink className="w-3.5 h-3.5" />
-                        <span>Live Portfolio</span>
+                        <ExternalLink className="w-3.5 h-3.5 text-slate-500" />
+                        <span>Live Portfolio Site</span>
                     </a>
                 </div>
             </aside>
 
-            {/* MAIN DASHBOARD CONTAINER */}
-            <div className="flex-1 flex flex-col min-w-0 bg-slate-950">
-                {/* TOP HEADER BAR */}
-                <header className="h-16 border-b border-slate-800 bg-slate-900/90 backdrop-blur px-6 flex items-center justify-between sticky top-0 z-30">
+            {/* MAIN RIGHT CONTAINER (WITH SCROLLING FIX) */}
+            <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden bg-slate-50">
+                {/* STICKY TOP HEADER */}
+                <header className="h-16 border-b border-slate-200 bg-white px-6 flex items-center justify-between shrink-0">
                     <div className="flex items-center gap-2.5">
                         <span className="text-xs text-slate-400 uppercase font-semibold tracking-wider">Dashboard</span>
-                        <span className="text-slate-600">/</span>
-                        <span className="text-xs text-slate-100 font-bold capitalize">{activeTab}</span>
+                        <span className="text-slate-300">/</span>
+                        <span className="text-xs text-slate-900 font-bold capitalize">{activeTab}</span>
                     </div>
 
                     <div className="flex items-center gap-3">
-                        {tokenValidation.status === "valid" ? (
-                            <Badge variant="secondary" className="bg-emerald-950/80 text-emerald-400 border-emerald-800 gap-1.5 text-xs py-1 px-3">
-                                <ShieldCheck className="w-3.5 h-3.5" />
-                                <span>API Key Validated</span>
-                            </Badge>
-                        ) : (
-                            <Button
-                                size="sm"
-                                variant="destructive"
-                                onClick={() => setActiveTab("settings")}
-                                className="bg-red-950/80 hover:bg-red-900 text-red-300 border border-red-800 text-xs gap-1.5 h-8 px-3"
-                            >
-                                <ShieldAlert className="w-3.5 h-3.5" />
-                                <span>Configure API Key</span>
-                            </Button>
-                        )}
+                        <Badge variant="outline" className="bg-emerald-50 text-emerald-800 border-emerald-300 text-xs py-1 px-3 gap-1.5">
+                            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>Authenticated</span>
+                        </Badge>
 
                         <Button
                             size="sm"
                             onClick={handleCommitToGitHub}
                             disabled={status.type === "loading"}
-                            className="bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs h-8 px-4 gap-2 shadow-sm"
+                            className="bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs h-8 px-4 gap-2 shadow-xs"
                         >
                             {status.type === "loading" ? (
                                 <>
@@ -438,62 +510,62 @@ export default function AdminDashboard() {
                             ) : (
                                 <>
                                     <Save className="w-3.5 h-3.5" />
-                                    <span>Save & Commit</span>
+                                    <span>Save & Commit to GitHub</span>
                                 </>
                             )}
                         </Button>
                     </div>
                 </header>
 
-                {/* DASHBOARD BODY */}
-                <main className="p-6 flex flex-col gap-6 max-w-6xl w-full mx-auto">
+                {/* SCROLLABLE MAIN CONTENT BODY (100% FIXED SCROLLING) */}
+                <main className="flex-1 overflow-y-auto p-6 flex flex-col gap-6 max-w-6xl w-full mx-auto">
                     {/* Status Alert Banner */}
                     {status.message && (
                         <div
                             className={`flex items-center justify-between p-4 rounded-xl text-xs font-medium border shadow-xs ${status.type === "error"
-                                    ? "bg-red-950/80 text-red-200 border-red-800"
+                                    ? "bg-red-50 text-red-900 border-red-200"
                                     : status.type === "success"
-                                        ? "bg-emerald-950/80 text-emerald-200 border-emerald-800"
-                                        : "bg-blue-950/80 text-blue-200 border-blue-800"
+                                        ? "bg-emerald-50 text-emerald-900 border-emerald-200"
+                                        : "bg-blue-50 text-blue-900 border-blue-200"
                                 }`}
                         >
                             <div className="flex items-center gap-3">
-                                {status.type === "error" && <AlertCircle className="w-4 h-4 shrink-0 text-red-400" />}
-                                {status.type === "success" && <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />}
-                                {status.type === "loading" && <Loader2 className="w-4 h-4 shrink-0 animate-spin text-blue-400" />}
+                                {status.type === "error" && <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />}
+                                {status.type === "success" && <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />}
+                                {status.type === "loading" && <Loader2 className="w-4 h-4 shrink-0 animate-spin text-blue-600" />}
                                 <span>{status.message}</span>
                             </div>
-                            <button onClick={() => setStatus({ type: "idle", message: "" })} className="text-slate-400 hover:text-white">
+                            <button onClick={() => setStatus({ type: "idle", message: "" })} className="text-slate-400 hover:text-slate-700">
                                 <X className="w-4 h-4" />
                             </button>
                         </div>
                     )}
 
-                    {/* OVERVIEW SCREEN */}
+                    {/* OVERVIEW TAB */}
                     {activeTab === "overview" && (
                         <div className="flex flex-col gap-6">
-                            <Card className="bg-slate-900 border-slate-800">
+                            <Card className="bg-white border-slate-200">
                                 <CardHeader className="flex flex-row items-center justify-between pb-3">
                                     <div className="flex items-center gap-3">
-                                        <div className="p-2.5 bg-blue-950 border border-blue-800 text-blue-400 rounded-lg">
+                                        <div className="p-2.5 bg-slate-100 border border-slate-200 text-slate-700 rounded-lg">
                                             <Lock className="w-5 h-5" />
                                         </div>
                                         <div>
-                                            <CardTitle className="text-sm font-semibold text-slate-100">🔒 Local Token Security & Privacy</CardTitle>
-                                            <CardDescription className="text-xs text-slate-400">
-                                                Your GitHub Personal Access Token is stored <strong>100% locally in your browser</strong> (`localStorage`).
-                                                Only your local device can push commits to your repository.
+                                            <CardTitle className="text-sm font-semibold text-slate-900">🔒 Secure Local Session</CardTitle>
+                                            <CardDescription className="text-xs text-slate-500">
+                                                Connected to repository <strong>{repo}</strong>.
+                                                Your token is verified and encrypted in browser session.
                                             </CardDescription>
                                         </div>
                                     </div>
                                     <Button
                                         size="sm"
                                         variant="outline"
-                                        onClick={() => validateToken(token, repo)}
-                                        className="border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs gap-1.5"
+                                        onClick={handleLogout}
+                                        className="border-slate-300 text-slate-700 hover:bg-slate-100 text-xs gap-1.5"
                                     >
-                                        <RefreshCw className="w-3.5 h-3.5" />
-                                        <span>Check Token</span>
+                                        <LogOut className="w-3.5 h-3.5" />
+                                        <span>Logout Session</span>
                                     </Button>
                                 </CardHeader>
                             </Card>
@@ -501,7 +573,7 @@ export default function AdminDashboard() {
                             {/* Metrics Grid */}
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                                 {[
-                                    { label: "Featured Projects", value: data.projects.length, sub: "Showcase items", icon: FolderKanban, tab: "projects" },
+                                    { label: "Featured Projects", value: data.projects.length, sub: "Active cards", icon: FolderKanban, tab: "projects" },
                                     { label: "Work Experiences", value: data.experiences.length, sub: "Timeline roles", icon: Briefcase, tab: "experiences" },
                                     { label: "Skill Categories", value: data.skillGroups.length, sub: `${data.skillGroups.reduce((a, b) => a + b.items.length, 0)} total tags`, icon: Wrench, tab: "skills" },
                                     { label: "Languages", value: data.languages.length, sub: "Fluency ratings", icon: Globe, tab: "languages" },
@@ -511,15 +583,15 @@ export default function AdminDashboard() {
                                         <Card
                                             key={i}
                                             onClick={() => setActiveTab(metric.tab as typeof activeTab)}
-                                            className="bg-slate-900 border-slate-800 hover:border-slate-700 cursor-pointer transition-all hover:-translate-y-0.5"
+                                            className="bg-white border-slate-200 hover:border-slate-300 cursor-pointer transition-all hover:-translate-y-0.5"
                                         >
                                             <CardHeader className="flex flex-row items-center justify-between pb-2">
-                                                <CardTitle className="text-xs font-medium text-slate-400">{metric.label}</CardTitle>
-                                                <Icon className="w-4 h-4 text-blue-400" />
+                                                <CardTitle className="text-xs font-medium text-slate-500">{metric.label}</CardTitle>
+                                                <Icon className="w-4 h-4 text-slate-700" />
                                             </CardHeader>
                                             <CardContent className="flex flex-col gap-1">
-                                                <span className="text-2xl font-bold text-slate-100">{metric.value}</span>
-                                                <span className="text-[11px] text-slate-400">{metric.sub}</span>
+                                                <span className="text-2xl font-bold text-slate-900">{metric.value}</span>
+                                                <span className="text-[11px] text-slate-500">{metric.sub}</span>
                                             </CardContent>
                                         </Card>
                                     );
@@ -527,25 +599,25 @@ export default function AdminDashboard() {
                             </div>
 
                             {/* Live Projects Table Overview */}
-                            <Card className="bg-slate-900 border-slate-800">
-                                <CardHeader className="flex flex-row items-center justify-between border-b border-slate-800 pb-3">
+                            <Card className="bg-white border-slate-200">
+                                <CardHeader className="flex flex-row items-center justify-between border-b border-slate-100 pb-3">
                                     <div>
-                                        <CardTitle className="text-sm font-semibold text-slate-100">Live Featured Projects</CardTitle>
-                                        <CardDescription className="text-xs text-slate-400">Current active projects rendered on your portfolio</CardDescription>
+                                        <CardTitle className="text-sm font-semibold text-slate-900">Live Featured Projects</CardTitle>
+                                        <CardDescription className="text-xs text-slate-500">Overview of project cards rendered on portfolio</CardDescription>
                                     </div>
-                                    <Button size="sm" variant="ghost" onClick={() => setActiveTab("projects")} className="text-xs text-blue-400 hover:text-blue-300">
+                                    <Button size="sm" variant="ghost" onClick={() => setActiveTab("projects")} className="text-xs text-slate-700 hover:text-slate-900">
                                         Manage Projects →
                                     </Button>
                                 </CardHeader>
-                                <CardContent className="divide-y divide-slate-800 pt-3">
+                                <CardContent className="divide-y divide-slate-100 pt-3">
                                     {data.projects.map((proj, idx) => (
                                         <div key={idx} className="py-3 flex items-center justify-between text-xs">
                                             <div className="flex items-center gap-3">
-                                                <span className="text-slate-500 font-mono">#{idx + 1}</span>
-                                                <span className="font-semibold text-slate-200">{proj.title}</span>
-                                                {proj.badge && <Badge variant="secondary" className="text-[10px] py-0 px-2">{proj.badge}</Badge>}
+                                                <span className="text-slate-400 font-mono">#{idx + 1}</span>
+                                                <span className="font-semibold text-slate-900">{proj.title}</span>
+                                                {proj.badge && <Badge variant="outline" className="text-[10px] py-0 px-2">{proj.badge}</Badge>}
                                             </div>
-                                            <span className="text-slate-400 font-mono truncate max-w-xs">{proj.image}</span>
+                                            <span className="text-slate-500 font-mono truncate max-w-xs">{proj.image}</span>
                                         </div>
                                     ))}
                                 </CardContent>
@@ -553,98 +625,13 @@ export default function AdminDashboard() {
                         </div>
                     )}
 
-                    {/* API SETTINGS TAB */}
-                    {activeTab === "settings" && (
-                        <div className="flex flex-col gap-6 max-w-3xl">
-                            <Card className="bg-slate-900 border-slate-800">
-                                <CardHeader className="border-b border-slate-800 pb-4 flex flex-row items-center justify-between">
-                                    <div>
-                                        <CardTitle className="text-sm font-semibold text-slate-100">GitHub API Credentials & Validation</CardTitle>
-                                        <CardDescription className="text-xs text-slate-400">Validate Personal Access Token (PAT) and test push access</CardDescription>
-                                    </div>
-                                    {tokenValidation.status === "valid" ? (
-                                        <Badge variant="secondary" className="bg-emerald-950 text-emerald-400 border-emerald-800 text-xs py-1 px-3 gap-1">
-                                            <UserCheck className="w-3.5 h-3.5" />
-                                            <span>Validated</span>
-                                        </Badge>
-                                    ) : (
-                                        <Badge variant="destructive" className="bg-red-950 text-red-400 border-red-800 text-xs py-1 px-3 gap-1">
-                                            <ShieldAlert className="w-3.5 h-3.5" />
-                                            <span>Validation Required</span>
-                                        </Badge>
-                                    )}
-                                </CardHeader>
-
-                                <CardContent className="flex flex-col gap-5 pt-5">
-                                    {tokenValidation.message && (
-                                        <div
-                                            className={`p-4 rounded-lg text-xs font-mono border flex items-start gap-2.5 ${tokenValidation.status === "valid"
-                                                    ? "bg-emerald-950/60 border-emerald-800 text-emerald-300"
-                                                    : tokenValidation.status === "testing"
-                                                        ? "bg-blue-950/60 border-blue-800 text-blue-300"
-                                                        : "bg-red-950/60 border-red-800 text-red-300"
-                                                }`}
-                                        >
-                                            {tokenValidation.status === "testing" && <Loader2 className="w-4 h-4 animate-spin shrink-0 text-blue-400" />}
-                                            {tokenValidation.status === "valid" && <ShieldCheck className="w-4 h-4 shrink-0 text-emerald-400" />}
-                                            {tokenValidation.status === "invalid" && <ShieldAlert className="w-4 h-4 shrink-0 text-red-400" />}
-                                            <div className="flex flex-col gap-1">
-                                                <span className="font-semibold">Validation Response:</span>
-                                                <span>{tokenValidation.message}</span>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    <div className="flex flex-col gap-4">
-                                        <div className="flex flex-col gap-1.5">
-                                            <label className="text-xs font-medium text-slate-300">Target Repository</label>
-                                            <Input
-                                                type="text"
-                                                value={repo}
-                                                onChange={(e) => setRepo(e.target.value)}
-                                                className="border-slate-700 bg-slate-950 text-slate-100 font-mono text-xs"
-                                                placeholder="rpiirmdhni/rpiirmdhni.github.io"
-                                            />
-                                        </div>
-
-                                        <div className="flex flex-col gap-1.5">
-                                            <label className="text-xs font-medium text-slate-300">Personal Access Token (PAT)</label>
-                                            <Input
-                                                type="password"
-                                                value={token}
-                                                onChange={(e) => setToken(e.target.value)}
-                                                className="border-slate-700 bg-slate-950 text-slate-100 font-mono text-xs"
-                                                placeholder="ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                                            />
-                                            <span className="text-[11px] text-slate-500">Requires `contents: write` or `repo` scope.</span>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex items-center gap-3 pt-2">
-                                        <Button size="sm" onClick={handleSaveConfig} className="bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs gap-2">
-                                            <Key className="w-3.5 h-3.5" />
-                                            <span>Save & Test Token</span>
-                                        </Button>
-
-                                        {token && (
-                                            <Button size="sm" variant="outline" onClick={handleDisconnect} className="border-red-800 text-red-400 hover:bg-red-950 text-xs gap-1.5">
-                                                <LogOut className="w-3.5 h-3.5" />
-                                                <span>Clear Credentials</span>
-                                            </Button>
-                                        )}
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        </div>
-                    )}
-
                     {/* PROJECTS TAB */}
                     {activeTab === "projects" && (
-                        <Card className="bg-slate-900 border-slate-800">
-                            <CardHeader className="flex flex-row items-center justify-between border-b border-slate-800 pb-4">
+                        <Card className="bg-white border-slate-200">
+                            <CardHeader className="flex flex-row items-center justify-between border-b border-slate-100 pb-4">
                                 <div>
-                                    <CardTitle className="text-sm font-semibold text-slate-100">Featured Projects ({data.projects.length})</CardTitle>
-                                    <CardDescription className="text-xs text-slate-400">Configure project cards, upload asset images, and link actions</CardDescription>
+                                    <CardTitle className="text-sm font-semibold text-slate-900">Featured Projects ({data.projects.length})</CardTitle>
+                                    <CardDescription className="text-xs text-slate-500">Configure project cards, upload asset images, and link actions</CardDescription>
                                 </div>
                                 <Button
                                     size="sm"
@@ -657,7 +644,7 @@ export default function AdminDashboard() {
                                             ],
                                         })
                                     }
-                                    className="bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold gap-1.5"
+                                    className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold gap-1.5"
                                 >
                                     <Plus className="w-3.5 h-3.5" />
                                     <span>Add Project</span>
@@ -666,21 +653,21 @@ export default function AdminDashboard() {
 
                             <CardContent className="flex flex-col gap-6 pt-6">
                                 {imageUploadStatus && (
-                                    <div className="text-xs text-blue-300 bg-blue-950/80 border border-blue-800 p-3 rounded-lg font-mono flex items-center gap-2">
-                                        <Upload className="w-4 h-4 text-blue-400" />
+                                    <div className="text-xs text-blue-800 bg-blue-50 border border-blue-200 p-3 rounded-lg font-mono flex items-center gap-2">
+                                        <Upload className="w-4 h-4 text-blue-600" />
                                         <span>{imageUploadStatus}</span>
                                     </div>
                                 )}
 
                                 {data.projects.map((project, idx) => (
-                                    <div key={idx} className="border border-slate-800 rounded-xl p-5 bg-slate-950/60 flex flex-col gap-4">
-                                        <div className="flex justify-between items-center border-b border-slate-800 pb-2">
-                                            <span className="text-xs font-mono font-bold text-slate-500">PROJECT #{idx + 1}</span>
+                                    <div key={idx} className="border border-slate-200 rounded-xl p-5 bg-slate-50/50 flex flex-col gap-4">
+                                        <div className="flex justify-between items-center border-b border-slate-200 pb-2">
+                                            <span className="text-xs font-mono font-bold text-slate-400">PROJECT #{idx + 1}</span>
                                             <Button
                                                 size="sm"
                                                 variant="ghost"
                                                 onClick={() => setData({ ...data, projects: data.projects.filter((_, i) => i !== idx) })}
-                                                className="text-xs text-red-400 hover:text-red-300 hover:bg-red-950/40 h-7 gap-1"
+                                                className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50 h-7 gap-1"
                                             >
                                                 <Trash2 className="w-3.5 h-3.5" />
                                                 <span>Delete</span>
@@ -689,7 +676,7 @@ export default function AdminDashboard() {
 
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <div className="flex flex-col gap-1.5">
-                                                <label className="text-xs font-medium text-slate-300">Project Title</label>
+                                                <label className="text-xs font-semibold text-slate-700">Project Title</label>
                                                 <Input
                                                     type="text"
                                                     value={project.title}
@@ -698,12 +685,12 @@ export default function AdminDashboard() {
                                                         copy[idx].title = e.target.value;
                                                         setData({ ...data, projects: copy });
                                                     }}
-                                                    className="border-slate-700 bg-slate-900 text-slate-100 text-xs"
+                                                    className="bg-white border-slate-300 text-slate-900 text-xs"
                                                 />
                                             </div>
 
                                             <div className="flex flex-col gap-1.5">
-                                                <label className="text-xs font-medium text-slate-300">Badge Tag (Optional)</label>
+                                                <label className="text-xs font-semibold text-slate-700">Badge Tag (Optional)</label>
                                                 <Input
                                                     type="text"
                                                     value={project.badge || ""}
@@ -712,14 +699,14 @@ export default function AdminDashboard() {
                                                         copy[idx].badge = e.target.value || undefined;
                                                         setData({ ...data, projects: copy });
                                                     }}
-                                                    className="border-slate-700 bg-slate-900 text-slate-100 text-xs"
+                                                    className="bg-white border-slate-300 text-slate-900 text-xs"
                                                     placeholder="e.g. Private"
                                                 />
                                             </div>
                                         </div>
 
                                         <div className="flex flex-col gap-1.5">
-                                            <label className="text-xs font-medium text-slate-300">Image Asset Path / Upload</label>
+                                            <label className="text-xs font-semibold text-slate-700">Image Asset Path / Upload</label>
                                             <div className="flex gap-2 items-center">
                                                 <Input
                                                     type="text"
@@ -729,9 +716,9 @@ export default function AdminDashboard() {
                                                         copy[idx].image = e.target.value;
                                                         setData({ ...data, projects: copy });
                                                     }}
-                                                    className="border-slate-700 bg-slate-900 text-slate-100 font-mono text-xs"
+                                                    className="bg-white border-slate-300 text-slate-900 font-mono text-xs"
                                                 />
-                                                <label className="cursor-pointer inline-flex items-center gap-1.5 px-3.5 py-2.5 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg transition-colors whitespace-nowrap">
+                                                <label className="cursor-pointer inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white rounded-lg transition-colors whitespace-nowrap">
                                                     <Upload className="w-3.5 h-3.5" />
                                                     <span>Upload File</span>
                                                     <input
@@ -754,7 +741,7 @@ export default function AdminDashboard() {
                                         </div>
 
                                         <div className="flex flex-col gap-1.5">
-                                            <label className="text-xs font-medium text-slate-300">Description</label>
+                                            <label className="text-xs font-semibold text-slate-700">Description</label>
                                             <textarea
                                                 rows={2}
                                                 value={project.description}
@@ -763,14 +750,14 @@ export default function AdminDashboard() {
                                                     copy[idx].description = e.target.value;
                                                     setData({ ...data, projects: copy });
                                                 }}
-                                                className="w-full text-xs border border-slate-700 p-2.5 rounded-lg bg-slate-900 text-slate-100"
+                                                className="w-full text-xs border border-slate-300 p-2.5 rounded-lg bg-white text-slate-900"
                                             />
                                         </div>
 
                                         {/* Links */}
-                                        <div className="flex flex-col gap-2 pt-3 border-t border-slate-800">
+                                        <div className="flex flex-col gap-2 pt-3 border-t border-slate-200">
                                             <div className="flex justify-between items-center">
-                                                <label className="text-xs font-semibold text-slate-300">Action Button Links</label>
+                                                <label className="text-xs font-semibold text-slate-700">Action Button Links</label>
                                                 <Button
                                                     size="sm"
                                                     variant="ghost"
@@ -779,7 +766,7 @@ export default function AdminDashboard() {
                                                         copy[idx].links = [...(copy[idx].links || []), { type: "github", href: "", label: "View Link" }];
                                                         setData({ ...data, projects: copy });
                                                     }}
-                                                    className="text-xs text-blue-400 hover:text-blue-300 font-medium h-7 gap-1"
+                                                    className="text-xs text-slate-700 hover:text-slate-900 font-semibold h-7 gap-1"
                                                 >
                                                     <Plus className="w-3.5 h-3.5" />
                                                     <span>Add Link</span>
@@ -795,7 +782,7 @@ export default function AdminDashboard() {
                                                             if (copy[idx].links) copy[idx].links![lIdx].type = e.target.value as ProjectLink["type"];
                                                             setData({ ...data, projects: copy });
                                                         }}
-                                                        className="text-xs border border-slate-700 p-2 rounded-lg bg-slate-900 text-slate-100"
+                                                        className="text-xs border border-slate-300 p-2 rounded-lg bg-white text-slate-900"
                                                     >
                                                         <option value="github">GitHub</option>
                                                         <option value="npm">NPM</option>
@@ -810,7 +797,7 @@ export default function AdminDashboard() {
                                                             setData({ ...data, projects: copy });
                                                         }}
                                                         placeholder="Button Label"
-                                                        className="border-slate-700 bg-slate-900 text-slate-100 text-xs w-1/3"
+                                                        className="bg-white border-slate-300 text-slate-900 text-xs w-1/3"
                                                     />
                                                     <Input
                                                         type="text"
@@ -821,7 +808,7 @@ export default function AdminDashboard() {
                                                             setData({ ...data, projects: copy });
                                                         }}
                                                         placeholder="URL"
-                                                        className="border-slate-700 bg-slate-900 text-slate-100 font-mono text-xs w-full"
+                                                        className="bg-white border-slate-300 text-slate-900 font-mono text-xs w-full"
                                                     />
                                                     <button
                                                         onClick={() => {
@@ -829,7 +816,7 @@ export default function AdminDashboard() {
                                                             copy[idx].links = copy[idx].links?.filter((_, i) => i !== lIdx);
                                                             setData({ ...data, projects: copy });
                                                         }}
-                                                        className="p-1.5 text-slate-500 hover:text-red-400"
+                                                        className="p-1.5 text-slate-400 hover:text-red-600"
                                                     >
                                                         <X className="w-3.5 h-3.5" />
                                                     </button>
@@ -844,11 +831,11 @@ export default function AdminDashboard() {
 
                     {/* EXPERIENCES TAB */}
                     {activeTab === "experiences" && (
-                        <Card className="bg-slate-900 border-slate-800">
-                            <CardHeader className="flex flex-row items-center justify-between border-b border-slate-800 pb-4">
+                        <Card className="bg-white border-slate-200">
+                            <CardHeader className="flex flex-row items-center justify-between border-b border-slate-100 pb-4">
                                 <div>
-                                    <CardTitle className="text-sm font-semibold text-slate-100">Work & Leadership Experiences ({data.experiences.length})</CardTitle>
-                                    <CardDescription className="text-xs text-slate-400">Timeline of professional roles and memberships</CardDescription>
+                                    <CardTitle className="text-sm font-semibold text-slate-900">Work & Leadership Experiences ({data.experiences.length})</CardTitle>
+                                    <CardDescription className="text-xs text-slate-500">Timeline of professional roles and memberships</CardDescription>
                                 </div>
                                 <Button
                                     size="sm"
@@ -858,7 +845,7 @@ export default function AdminDashboard() {
                                             experiences: [{ period: "2026 - Present", title: "New Role", organization: "Organization Name", current: true }, ...data.experiences],
                                         })
                                     }
-                                    className="bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold gap-1.5"
+                                    className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold gap-1.5"
                                 >
                                     <Plus className="w-3.5 h-3.5" />
                                     <span>Add Experience</span>
@@ -867,14 +854,14 @@ export default function AdminDashboard() {
 
                             <CardContent className="flex flex-col gap-4 pt-6">
                                 {data.experiences.map((exp, idx) => (
-                                    <div key={idx} className="border border-slate-800 rounded-xl p-4 bg-slate-950/60 flex flex-col gap-3">
+                                    <div key={idx} className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 flex flex-col gap-3">
                                         <div className="flex justify-between items-center">
-                                            <span className="text-xs font-mono font-bold text-slate-500">ENTRY #{idx + 1}</span>
+                                            <span className="text-xs font-mono font-bold text-slate-400">ENTRY #{idx + 1}</span>
                                             <Button
                                                 size="sm"
                                                 variant="ghost"
                                                 onClick={() => setData({ ...data, experiences: data.experiences.filter((_, i) => i !== idx) })}
-                                                className="text-xs text-red-400 hover:text-red-300 hover:bg-red-950/40 h-7 gap-1"
+                                                className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50 h-7 gap-1"
                                             >
                                                 <Trash2 className="w-3.5 h-3.5" />
                                                 <span>Delete</span>
@@ -891,7 +878,7 @@ export default function AdminDashboard() {
                                                     setData({ ...data, experiences: copy });
                                                 }}
                                                 placeholder="Period"
-                                                className="border-slate-700 bg-slate-900 text-slate-100 text-xs"
+                                                className="bg-white border-slate-300 text-slate-900 text-xs"
                                             />
                                             <Input
                                                 type="text"
@@ -902,7 +889,7 @@ export default function AdminDashboard() {
                                                     setData({ ...data, experiences: copy });
                                                 }}
                                                 placeholder="Role / Title"
-                                                className="border-slate-700 bg-slate-900 text-slate-100 text-xs"
+                                                className="bg-white border-slate-300 text-slate-900 text-xs"
                                             />
                                             <Input
                                                 type="text"
@@ -913,7 +900,7 @@ export default function AdminDashboard() {
                                                     setData({ ...data, experiences: copy });
                                                 }}
                                                 placeholder="Organization"
-                                                className="border-slate-700 bg-slate-900 text-slate-100 text-xs"
+                                                className="bg-white border-slate-300 text-slate-900 text-xs"
                                             />
                                             <Input
                                                 type="text"
@@ -924,11 +911,11 @@ export default function AdminDashboard() {
                                                     setData({ ...data, experiences: copy });
                                                 }}
                                                 placeholder="Badge (e.g. Freelance)"
-                                                className="border-slate-700 bg-slate-900 text-slate-100 text-xs"
+                                                className="bg-white border-slate-300 text-slate-900 text-xs"
                                             />
                                         </div>
 
-                                        <label className="flex items-center gap-2 text-xs text-slate-400 cursor-pointer">
+                                        <label className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
                                             <input
                                                 type="checkbox"
                                                 checked={exp.current}
@@ -937,7 +924,7 @@ export default function AdminDashboard() {
                                                     copy[idx].current = e.target.checked;
                                                     setData({ ...data, experiences: copy });
                                                 }}
-                                                className="rounded border-slate-700 bg-slate-900 text-blue-600"
+                                                className="rounded border-slate-300 text-slate-900"
                                             />
                                             <span>Current / Ongoing Role (Blue Dot Indicator)</span>
                                         </label>
@@ -949,11 +936,11 @@ export default function AdminDashboard() {
 
                     {/* EDUCATIONS TAB */}
                     {activeTab === "educations" && (
-                        <Card className="bg-slate-900 border-slate-800">
-                            <CardHeader className="flex flex-row items-center justify-between border-b border-slate-800 pb-4">
+                        <Card className="bg-white border-slate-200">
+                            <CardHeader className="flex flex-row items-center justify-between border-b border-slate-100 pb-4">
                                 <div>
-                                    <CardTitle className="text-sm font-semibold text-slate-100">Education Timeline ({data.educations.length})</CardTitle>
-                                    <CardDescription className="text-xs text-slate-400">Academic institutions and degrees</CardDescription>
+                                    <CardTitle className="text-sm font-semibold text-slate-900">Education Timeline ({data.educations.length})</CardTitle>
+                                    <CardDescription className="text-xs text-slate-500">Academic institutions and degrees</CardDescription>
                                 </div>
                                 <Button
                                     size="sm"
@@ -963,7 +950,7 @@ export default function AdminDashboard() {
                                             educations: [{ period: "2026 - Present", title: "Field of Study", organization: "Institution Name", current: true }, ...data.educations],
                                         })
                                     }
-                                    className="bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold gap-1.5"
+                                    className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold gap-1.5"
                                 >
                                     <Plus className="w-3.5 h-3.5" />
                                     <span>Add Education</span>
@@ -972,14 +959,14 @@ export default function AdminDashboard() {
 
                             <CardContent className="flex flex-col gap-4 pt-6">
                                 {data.educations.map((edu, idx) => (
-                                    <div key={idx} className="border border-slate-800 rounded-xl p-4 bg-slate-950/60 flex flex-col gap-3">
+                                    <div key={idx} className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 flex flex-col gap-3">
                                         <div className="flex justify-between items-center">
-                                            <span className="text-xs font-mono font-bold text-slate-500">ENTRY #{idx + 1}</span>
+                                            <span className="text-xs font-mono font-bold text-slate-400">ENTRY #{idx + 1}</span>
                                             <Button
                                                 size="sm"
                                                 variant="ghost"
                                                 onClick={() => setData({ ...data, educations: data.educations.filter((_, i) => i !== idx) })}
-                                                className="text-xs text-red-400 hover:text-red-300 hover:bg-red-950/40 h-7 gap-1"
+                                                className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50 h-7 gap-1"
                                             >
                                                 <Trash2 className="w-3.5 h-3.5" />
                                                 <span>Delete</span>
@@ -996,7 +983,7 @@ export default function AdminDashboard() {
                                                     setData({ ...data, educations: copy });
                                                 }}
                                                 placeholder="Period"
-                                                className="border-slate-700 bg-slate-900 text-slate-100 text-xs"
+                                                className="bg-white border-slate-300 text-slate-900 text-xs"
                                             />
                                             <Input
                                                 type="text"
@@ -1007,7 +994,7 @@ export default function AdminDashboard() {
                                                     setData({ ...data, educations: copy });
                                                 }}
                                                 placeholder="Major / Field of Study"
-                                                className="border-slate-700 bg-slate-900 text-slate-100 text-xs"
+                                                className="bg-white border-slate-300 text-slate-900 text-xs"
                                             />
                                             <Input
                                                 type="text"
@@ -1018,11 +1005,11 @@ export default function AdminDashboard() {
                                                     setData({ ...data, educations: copy });
                                                 }}
                                                 placeholder="School / University"
-                                                className="border-slate-700 bg-slate-900 text-slate-100 text-xs"
+                                                className="bg-white border-slate-300 text-slate-900 text-xs"
                                             />
                                         </div>
 
-                                        <label className="flex items-center gap-2 text-xs text-slate-400 cursor-pointer">
+                                        <label className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
                                             <input
                                                 type="checkbox"
                                                 checked={edu.current}
@@ -1031,7 +1018,7 @@ export default function AdminDashboard() {
                                                     copy[idx].current = e.target.checked;
                                                     setData({ ...data, educations: copy });
                                                 }}
-                                                className="rounded border-slate-700 bg-slate-900 text-blue-600"
+                                                className="rounded border-slate-300 text-slate-900"
                                             />
                                             <span>Currently Studying (Blue Dot Indicator)</span>
                                         </label>
@@ -1043,16 +1030,16 @@ export default function AdminDashboard() {
 
                     {/* SKILLS TAB */}
                     {activeTab === "skills" && (
-                        <Card className="bg-slate-900 border-slate-800">
-                            <CardHeader className="flex flex-row items-center justify-between border-b border-slate-800 pb-4">
+                        <Card className="bg-white border-slate-200">
+                            <CardHeader className="flex flex-row items-center justify-between border-b border-slate-100 pb-4">
                                 <div>
-                                    <CardTitle className="text-sm font-semibold text-slate-100">Technical & Soft Skill Groups ({data.skillGroups.length})</CardTitle>
-                                    <CardDescription className="text-xs text-slate-400">Group skills by categories and comma-separated tags</CardDescription>
+                                    <CardTitle className="text-sm font-semibold text-slate-900">Technical & Soft Skill Groups ({data.skillGroups.length})</CardTitle>
+                                    <CardDescription className="text-xs text-slate-500">Group skills by categories and comma-separated tags</CardDescription>
                                 </div>
                                 <Button
                                     size="sm"
                                     onClick={() => setData({ ...data, skillGroups: [...data.skillGroups, { title: "New Category", items: ["Skill Item"] }] })}
-                                    className="bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold gap-1.5"
+                                    className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold gap-1.5"
                                 >
                                     <Plus className="w-3.5 h-3.5" />
                                     <span>Add Category</span>
@@ -1061,7 +1048,7 @@ export default function AdminDashboard() {
 
                             <CardContent className="flex flex-col gap-6 pt-6">
                                 {data.skillGroups.map((group, sIdx) => (
-                                    <div key={sIdx} className="border border-slate-800 rounded-xl p-4 bg-slate-950/60 flex flex-col gap-3">
+                                    <div key={sIdx} className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 flex flex-col gap-3">
                                         <div className="flex justify-between items-center">
                                             <Input
                                                 type="text"
@@ -1071,13 +1058,13 @@ export default function AdminDashboard() {
                                                     copy[sIdx].title = e.target.value;
                                                     setData({ ...data, skillGroups: copy });
                                                 }}
-                                                className="border-slate-700 bg-slate-900 text-slate-100 font-bold text-xs w-60"
+                                                className="bg-white border-slate-300 text-slate-900 font-bold text-xs w-60"
                                             />
                                             <Button
                                                 size="sm"
                                                 variant="ghost"
                                                 onClick={() => setData({ ...data, skillGroups: data.skillGroups.filter((_, i) => i !== sIdx) })}
-                                                className="text-xs text-red-400 hover:text-red-300 hover:bg-red-950/40 h-7 gap-1"
+                                                className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50 h-7 gap-1"
                                             >
                                                 <Trash2 className="w-3.5 h-3.5" />
                                                 <span>Delete Category</span>
@@ -1085,7 +1072,7 @@ export default function AdminDashboard() {
                                         </div>
 
                                         <div className="flex flex-col gap-1.5">
-                                            <label className="text-xs font-medium text-slate-400">Items (comma-separated)</label>
+                                            <label className="text-xs font-semibold text-slate-700">Items (comma-separated)</label>
                                             <textarea
                                                 rows={2}
                                                 value={group.items.join(", ")}
@@ -1094,7 +1081,7 @@ export default function AdminDashboard() {
                                                     copy[sIdx].items = e.target.value.split(",").map((s) => s.trim()).filter(Boolean);
                                                     setData({ ...data, skillGroups: copy });
                                                 }}
-                                                className="w-full text-xs border border-slate-700 p-2.5 rounded-lg bg-slate-900 text-slate-100 font-mono"
+                                                className="w-full text-xs border border-slate-300 p-2.5 rounded-lg bg-white text-slate-900 font-mono"
                                             />
                                         </div>
                                     </div>
@@ -1105,16 +1092,16 @@ export default function AdminDashboard() {
 
                     {/* LANGUAGES TAB */}
                     {activeTab === "languages" && (
-                        <Card className="bg-slate-900 border-slate-800">
-                            <CardHeader className="flex flex-row items-center justify-between border-b border-slate-800 pb-4">
+                        <Card className="bg-white border-slate-200">
+                            <CardHeader className="flex flex-row items-center justify-between border-b border-slate-100 pb-4">
                                 <div>
-                                    <CardTitle className="text-sm font-semibold text-slate-100">Languages & Fluency ({data.languages.length})</CardTitle>
-                                    <CardDescription className="text-xs text-slate-400">Language fluency and progress bar percentages</CardDescription>
+                                    <CardTitle className="text-sm font-semibold text-slate-900">Languages & Fluency ({data.languages.length})</CardTitle>
+                                    <CardDescription className="text-xs text-slate-500">Language fluency and progress bar percentages</CardDescription>
                                 </div>
                                 <Button
                                     size="sm"
                                     onClick={() => setData({ ...data, languages: [...data.languages, { name: "Language", level: "Proficiency Level", percent: 80 }] })}
-                                    className="bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold gap-1.5"
+                                    className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold gap-1.5"
                                 >
                                     <Plus className="w-3.5 h-3.5" />
                                     <span>Add Language</span>
@@ -1123,7 +1110,7 @@ export default function AdminDashboard() {
 
                             <CardContent className="flex flex-col gap-4 pt-6">
                                 {data.languages.map((lang, idx) => (
-                                    <div key={idx} className="border border-slate-800 rounded-xl p-4 bg-slate-950/60 flex items-center gap-3">
+                                    <div key={idx} className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 flex items-center gap-3">
                                         <Input
                                             type="text"
                                             value={lang.name}
@@ -1133,7 +1120,7 @@ export default function AdminDashboard() {
                                                 setData({ ...data, languages: copy });
                                             }}
                                             placeholder="Language"
-                                            className="border-slate-700 bg-slate-900 text-slate-100 text-xs w-1/4"
+                                            className="bg-white border-slate-300 text-slate-900 text-xs w-1/4"
                                         />
                                         <Input
                                             type="text"
@@ -1144,7 +1131,7 @@ export default function AdminDashboard() {
                                                 setData({ ...data, languages: copy });
                                             }}
                                             placeholder="Level Description"
-                                            className="border-slate-700 bg-slate-900 text-slate-100 text-xs w-1/2"
+                                            className="bg-white border-slate-300 text-slate-900 text-xs w-1/2"
                                         />
                                         <div className="flex items-center gap-1 w-1/4">
                                             <Input
@@ -1157,13 +1144,13 @@ export default function AdminDashboard() {
                                                     copy[idx].percent = Number(e.target.value);
                                                     setData({ ...data, languages: copy });
                                                 }}
-                                                className="border-slate-700 bg-slate-900 text-slate-100 font-mono text-xs w-full"
+                                                className="bg-white border-slate-300 text-slate-900 font-mono text-xs w-full"
                                             />
                                             <span className="text-xs font-semibold text-slate-500">%</span>
                                         </div>
                                         <button
-                                            onClick={() => setData({ ...data, languages: data.languages.filter((_, i) => i !== idx) })}
-                                            className="p-1.5 text-slate-500 hover:text-red-400"
+                                            onClick={() => setData({ ...data, languages: data.languages.filter((_, i) => i !== idx)} )}
+                                            className="p-1.5 text-slate-400 hover:text-red-600"
                                         >
                                             <Trash2 className="w-4 h-4" />
                                         </button>
@@ -1175,19 +1162,19 @@ export default function AdminDashboard() {
 
                     {/* STATS TAB */}
                     {activeTab === "stats" && (
-                        <Card className="bg-slate-900 border-slate-800">
-                            <CardHeader className="border-b border-slate-800 pb-4">
-                                <CardTitle className="text-sm font-semibold text-slate-100">About Me Stat Cards</CardTitle>
-                                <CardDescription className="text-xs text-slate-400">Values and subtext labels for the three main stats cards</CardDescription>
+                        <Card className="bg-white border-slate-200">
+                            <CardHeader className="border-b border-slate-100 pb-4">
+                                <CardTitle className="text-sm font-semibold text-slate-900">About Me Stat Cards</CardTitle>
+                                <CardDescription className="text-xs text-slate-500">Values and subtext labels for the three main stats cards</CardDescription>
                             </CardHeader>
 
                             <CardContent className="pt-6">
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     {data.aboutStats.map((stat, idx) => (
-                                        <div key={idx} className="border border-slate-800 rounded-xl p-4 bg-slate-950/60 flex flex-col gap-3">
-                                            <span className="text-xs font-mono font-bold text-slate-500">METRIC #{idx + 1}</span>
+                                        <div key={idx} className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 flex flex-col gap-3">
+                                            <span className="text-xs font-mono font-bold text-slate-400">METRIC #{idx + 1}</span>
                                             <div className="flex flex-col gap-1.5">
-                                                <label className="text-xs font-medium text-slate-300">Display Value</label>
+                                                <label className="text-xs font-semibold text-slate-700">Display Value</label>
                                                 <Input
                                                     type="text"
                                                     value={stat.value}
@@ -1197,12 +1184,12 @@ export default function AdminDashboard() {
                                                         setData({ ...data, aboutStats: copy });
                                                     }}
                                                     placeholder="e.g. 19"
-                                                    className="border-slate-700 bg-slate-900 text-slate-100 font-bold text-xs"
+                                                    className="bg-white border-slate-300 text-slate-900 font-bold text-xs"
                                                 />
                                             </div>
 
                                             <div className="flex flex-col gap-1.5">
-                                                <label className="text-xs font-medium text-slate-300">Subtext Label</label>
+                                                <label className="text-xs font-semibold text-slate-700">Subtext Label</label>
                                                 <Input
                                                     type="text"
                                                     value={stat.label}
@@ -1212,7 +1199,7 @@ export default function AdminDashboard() {
                                                         setData({ ...data, aboutStats: copy });
                                                     }}
                                                     placeholder="e.g. Years Old"
-                                                    className="border-slate-700 bg-slate-900 text-slate-100 text-xs"
+                                                    className="bg-white border-slate-300 text-slate-900 text-xs"
                                                 />
                                             </div>
                                         </div>
