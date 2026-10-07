@@ -36,9 +36,9 @@
       ]
     },
     {
-      "title": "Personal Portfolio",
+      "title": "Personal Portfolio & Headless GitHub CMS",
       "image": "/assets/img/projects/portfolio.png",
-      "description": "",
+      "description": "A modern developer portfolio website built with Next.js, featuring an interactive CMS Admin Dashboard to manage content and upload assets directly to a GitHub Repository without needing a database.",
       "badge": "",
       "links": [
         {
