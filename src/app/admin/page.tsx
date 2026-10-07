@@ -101,6 +101,20 @@ export default function AdminDashboard() {
         userLogin?: string;
     }>({ status: "idle", message: "" });
 
+    const [uploadModal, setUploadModal] = useState<{
+        isOpen: boolean;
+        file: File | null;
+        originalExt: string;
+        filename: string;
+        callback: ((url: string) => void) | null;
+    }>({
+        isOpen: false,
+        file: null,
+        originalExt: ".png",
+        filename: "",
+        callback: null,
+    });
+
     // Reorder helper for items and categories
     const moveItem = <T,>(list: T[], index: number, direction: "up" | "down"): T[] => {
         const targetIndex = direction === "up" ? index - 1 : index + 1;
@@ -223,7 +237,7 @@ export default function AdminDashboard() {
         );
     };
 
-    const handleFileUpload = async (file: File, callback: (url: string) => void) => {
+    const openUploadModal = (file: File, callback: (url: string) => void) => {
         if (!token) return alert("Please login first.");
 
         // Security Check 1: File size limit (10MB max)
@@ -238,15 +252,24 @@ export default function AdminDashboard() {
             return alert("Invalid file type. Only JPEG, PNG, WEBP, GIF, and SVG images are allowed.");
         }
 
-        // Custom File Renaming Prompt
         const extMatch = file.name.match(/\.[0-9a-z]+$/i);
         const originalExt = extMatch ? extMatch[0].toLowerCase() : ".png";
         const defaultName = file.name.replace(/\.[0-9a-z]+$/i, "");
 
-        const userInput = prompt("Enter target filename for uploaded image:", defaultName);
-        if (userInput === null) return; // User cancelled upload
+        setUploadModal({
+            isOpen: true,
+            file,
+            originalExt,
+            filename: defaultName,
+            callback,
+        });
+    };
 
-        let targetName = userInput.trim() ? userInput.trim() : defaultName;
+    const executeFileUpload = async () => {
+        if (!uploadModal.file || !uploadModal.callback) return;
+
+        const { file, originalExt, filename, callback } = uploadModal;
+        let targetName = filename.trim() ? filename.trim() : "uploaded-image";
         if (!targetName.toLowerCase().endsWith(originalExt)) {
             targetName += originalExt;
         }
@@ -254,6 +277,7 @@ export default function AdminDashboard() {
         const cleanFileName = targetName.toLowerCase().replace(/[^a-z0-9._-]/g, "-");
         const path = `public/assets/img/projects/${cleanFileName}`;
 
+        setUploadModal({ isOpen: false, file: null, originalExt: ".png", filename: "", callback: null });
         setImageUploadStatus(`Uploading ${cleanFileName}...`);
 
         try {
@@ -802,11 +826,12 @@ export default function AdminDashboard() {
                                                         onChange={(e) => {
                                                             const file = e.target.files?.[0];
                                                             if (file) {
-                                                                handleFileUpload(file, (url) => {
+                                                                openUploadModal(file, (url) => {
                                                                     const copy = [...data.projects];
                                                                     copy[idx].image = url;
                                                                     setData({ ...data, projects: copy });
                                                                 });
+                                                                e.target.value = "";
                                                             }
                                                         }}
                                                     />
@@ -1394,6 +1419,77 @@ export default function AdminDashboard() {
                     </main>
                 </div>
             </div>
+
+            {/* Custom Image Rename Modal */}
+            {uploadModal.isOpen && (
+                <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+                    <div className="bg-white border border-slate-200 rounded-xl shadow-2xl max-w-md w-full overflow-hidden">
+                        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-slate-50/50">
+                            <div className="flex items-center gap-2.5">
+                                <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg">
+                                    <Upload className="w-4 h-4" />
+                                </div>
+                                <div>
+                                    <h3 className="font-semibold text-slate-900 text-sm">Rename Upload File</h3>
+                                    <p className="text-xs text-slate-500">Set target filename before uploading to GitHub</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setUploadModal({ isOpen: false, file: null, originalExt: ".png", filename: "", callback: null })}
+                                className="p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+
+                        <form
+                            onSubmit={(e) => {
+                                e.preventDefault();
+                                executeFileUpload();
+                            }}
+                            className="p-5 space-y-4"
+                        >
+                            <div className="space-y-2">
+                                <label className="text-xs font-semibold text-slate-700">Filename</label>
+                                <div className="flex items-center gap-2">
+                                    <Input
+                                        type="text"
+                                        value={uploadModal.filename}
+                                        onChange={(e) => setUploadModal({ ...uploadModal, filename: e.target.value })}
+                                        placeholder="e.g. project-preview"
+                                        className="bg-white border-slate-300 text-slate-900 text-sm font-medium focus:ring-2 focus:ring-indigo-500"
+                                        autoFocus
+                                    />
+                                    <Badge variant="outline" className="px-2.5 py-2 text-xs font-mono bg-slate-100 text-slate-700 border-slate-200 shrink-0">
+                                        {uploadModal.originalExt}
+                                    </Badge>
+                                </div>
+                                <p className="text-[11px] text-slate-500 leading-tight">
+                                    Path preview: <code className="bg-slate-100 px-1 py-0.5 rounded text-slate-700 font-mono text-[10px]">public/assets/img/projects/{(uploadModal.filename.trim() || "image").toLowerCase().replace(/[^a-z0-9._-]/g, "-") + uploadModal.originalExt}</code>
+                                </p>
+                            </div>
+
+                            <div className="flex items-center justify-end gap-2 pt-2">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => setUploadModal({ isOpen: false, file: null, originalExt: ".png", filename: "", callback: null })}
+                                    className="text-xs font-medium border-slate-300 text-slate-700 hover:bg-slate-50 cursor-pointer"
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    type="submit"
+                                    className="text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm gap-1.5 cursor-pointer"
+                                >
+                                    <Upload className="w-3.5 h-3.5" />
+                                    <span>Confirm & Upload</span>
+                                </Button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
