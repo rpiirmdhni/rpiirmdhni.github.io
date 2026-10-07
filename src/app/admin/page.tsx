@@ -28,6 +28,13 @@ import {
     Wrench,
     X,
 } from "lucide-react";
+
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
+import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
+
 import initialPortfolioData from "@/data/portfolio.json";
 
 type ProjectLink = {
@@ -94,7 +101,6 @@ export default function AdminDashboard() {
         canPush?: boolean;
     }>({ status: "idle", message: "" });
 
-    // Load credentials on mount and run validation
     useEffect(() => {
         const savedToken = localStorage.getItem("cms_github_token") || "";
         const savedRepo = localStorage.getItem("cms_github_repo") || "rpiirmdhni/rpiirmdhni.github.io";
@@ -106,7 +112,6 @@ export default function AdminDashboard() {
         }
     }, []);
 
-    // Real-time API Key / Token Validation
     const validateToken = async (testToken: string, testRepo: string) => {
         if (!testToken.trim()) {
             setTokenValidation({ status: "invalid", message: "Token is empty. Please enter your GitHub Personal Access Token.", canPush: false });
@@ -123,7 +128,7 @@ export default function AdminDashboard() {
             if (res.status === 401) {
                 setTokenValidation({
                     status: "invalid",
-                    message: "Invalid Token: Token expired or failed authentication (HTTP 401 Unauthorized).",
+                    message: "Invalid Token: Token expired or authentication failed (HTTP 401 Unauthorized).",
                     canPush: false,
                 });
                 return false;
@@ -132,7 +137,7 @@ export default function AdminDashboard() {
             if (res.status === 404) {
                 setTokenValidation({
                     status: "invalid",
-                    message: `Repository "${testRepo}" not found or token lacks repository read permission (HTTP 404).`,
+                    message: `Repository "${testRepo}" not found or token lacks access permission (HTTP 404).`,
                     canPush: false,
                 });
                 return false;
@@ -142,7 +147,7 @@ export default function AdminDashboard() {
                 const err = await res.json();
                 setTokenValidation({
                     status: "invalid",
-                    message: `Validation Error: ${err.message || res.statusText}`,
+                    message: `Validation error: ${err.message || res.statusText}`,
                     canPush: false,
                 });
                 return false;
@@ -154,7 +159,7 @@ export default function AdminDashboard() {
             if (!canPush) {
                 setTokenValidation({
                     status: "invalid",
-                    message: `Token valid for reading, but lacks WRITE / PUSH permissions for ${testRepo}.`,
+                    message: `Token is valid, but lacks WRITE / PUSH permissions for ${testRepo}.`,
                     canPush: false,
                     userLogin: repoData.owner?.login,
                 });
@@ -313,31 +318,31 @@ export default function AdminDashboard() {
 
     return (
         <div className="min-h-screen bg-slate-950 text-slate-100 font-sans antialiased flex flex-col md:flex-row">
-            {/* LEFT SIDEBAR (SHADCN DASHBOARD SIDEBAR) */}
+            {/* SHADCN DASHBOARD SIDEBAR */}
             <aside className="w-full md:w-64 bg-slate-900 border-r border-slate-800 flex flex-col justify-between shrink-0">
                 <div className="flex flex-col">
                     {/* Brand Header */}
                     <div className="p-5 border-b border-slate-800 flex items-center justify-between">
-                        <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold text-sm shadow-md">
+                        <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold text-xs shadow-sm">
                                 RR
                             </div>
                             <div className="flex flex-col">
-                                <span className="font-semibold text-sm text-slate-100 tracking-tight">Rafie CMS</span>
-                                <span className="text-[10px] text-slate-400 font-mono">v1.0 • shadcn ui</span>
+                                <span className="font-bold text-sm text-slate-100 tracking-tight">Rafie CMS</span>
+                                <span className="text-[10px] text-slate-400 font-mono">shadcn/ui official</span>
                             </div>
                         </div>
                     </div>
 
-                    {/* Navigation Items */}
+                    {/* Sidebar Navigation */}
                     <nav className="p-3 flex flex-col gap-1">
                         {[
                             { id: "overview", label: "Overview", icon: LayoutDashboard },
-                            { id: "projects", label: "Projects", icon: FolderKanban, badge: data.projects.length },
-                            { id: "experiences", label: "Experiences", icon: Briefcase, badge: data.experiences.length },
-                            { id: "educations", label: "Educations", icon: GraduationCap, badge: data.educations.length },
-                            { id: "skills", label: "Skills", icon: Wrench, badge: data.skillGroups.length },
-                            { id: "languages", label: "Languages", icon: Globe, badge: data.languages.length },
+                            { id: "projects", label: "Projects", icon: FolderKanban, count: data.projects.length },
+                            { id: "experiences", label: "Experiences", icon: Briefcase, count: data.experiences.length },
+                            { id: "educations", label: "Educations", icon: GraduationCap, count: data.educations.length },
+                            { id: "skills", label: "Skills", icon: Wrench, count: data.skillGroups.length },
+                            { id: "languages", label: "Languages", icon: Globe, count: data.languages.length },
                             { id: "stats", label: "About Stats", icon: BarChart3 },
                             { id: "settings", label: "API & Security", icon: Settings },
                         ].map((item) => {
@@ -356,10 +361,10 @@ export default function AdminDashboard() {
                                         <Icon className="w-4 h-4" />
                                         <span>{item.label}</span>
                                     </div>
-                                    {item.badge !== undefined && (
-                                        <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${isActive ? "bg-blue-700 text-white" : "bg-slate-800 text-slate-400"}`}>
-                                            {item.badge}
-                                        </span>
+                                    {item.count !== undefined && (
+                                        <Badge variant={isActive ? "secondary" : "outline"} className="text-[10px] px-1.5 py-0">
+                                            {item.count}
+                                        </Badge>
                                     )}
                                 </button>
                             );
@@ -367,61 +372,63 @@ export default function AdminDashboard() {
                     </nav>
                 </div>
 
-                {/* Sidebar Footer Info */}
+                {/* Sidebar Footer */}
                 <div className="p-4 border-t border-slate-800 flex flex-col gap-3">
-                    <div className="flex items-center gap-2 px-2 py-1.5 bg-slate-850 rounded-lg border border-slate-800">
+                    <div className="flex items-center gap-2 px-2.5 py-2 bg-slate-950 rounded-lg border border-slate-800">
                         {tokenValidation.status === "valid" ? (
-                            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div>
                         ) : (
-                            <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                            <div className="w-2 h-2 rounded-full bg-red-400"></div>
                         )}
                         <span className="text-[11px] text-slate-300 font-mono truncate">
-                            {tokenValidation.status === "valid" ? `@${tokenValidation.userLogin || "authenticated"}` : "Not Connected"}
+                            {tokenValidation.status === "valid" ? `@${tokenValidation.userLogin || "authenticated"}` : "Disconnected"}
                         </span>
                     </div>
 
                     <a
                         href="/"
                         target="_blank"
-                        className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs text-slate-400 hover:text-slate-200 bg-slate-800/50 hover:bg-slate-800 rounded-lg border border-slate-800 transition-colors"
+                        className="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700/80 rounded-lg border border-slate-700 transition-colors"
                     >
                         <ExternalLink className="w-3.5 h-3.5" />
-                        <span>View Live Portfolio</span>
+                        <span>Live Portfolio</span>
                     </a>
                 </div>
             </aside>
 
-            {/* MAIN CONTENT AREA */}
+            {/* MAIN DASHBOARD CONTAINER */}
             <div className="flex-1 flex flex-col min-w-0 bg-slate-950">
                 {/* TOP HEADER BAR */}
-                <header className="h-16 border-b border-slate-800 bg-slate-900/80 backdrop-blur px-6 flex items-center justify-between sticky top-0 z-30">
-                    <div className="flex items-center gap-3">
-                        <span className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Dashboard</span>
+                <header className="h-16 border-b border-slate-800 bg-slate-900/90 backdrop-blur px-6 flex items-center justify-between sticky top-0 z-30">
+                    <div className="flex items-center gap-2.5">
+                        <span className="text-xs text-slate-400 uppercase font-semibold tracking-wider">Dashboard</span>
                         <span className="text-slate-600">/</span>
-                        <span className="text-xs text-slate-200 font-semibold capitalize">{activeTab}</span>
+                        <span className="text-xs text-slate-100 font-bold capitalize">{activeTab}</span>
                     </div>
 
                     <div className="flex items-center gap-3">
-                        {/* Token Validation Pill */}
                         {tokenValidation.status === "valid" ? (
-                            <span className="inline-flex items-center gap-1.5 text-xs bg-emerald-950/60 text-emerald-400 border border-emerald-800 px-3 py-1 rounded-full font-medium">
-                                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                            <Badge variant="secondary" className="bg-emerald-950/80 text-emerald-400 border-emerald-800 gap-1.5 text-xs py-1 px-3">
+                                <ShieldCheck className="w-3.5 h-3.5" />
                                 <span>API Key Validated</span>
-                            </span>
+                            </Badge>
                         ) : (
-                            <button
+                            <Button
+                                size="sm"
+                                variant="destructive"
                                 onClick={() => setActiveTab("settings")}
-                                className="inline-flex items-center gap-1.5 text-xs bg-red-950/60 text-red-400 border border-red-800 px-3 py-1 rounded-full font-medium hover:bg-red-900/40"
+                                className="bg-red-950/80 hover:bg-red-900 text-red-300 border border-red-800 text-xs gap-1.5 h-8 px-3"
                             >
-                                <ShieldAlert className="w-3.5 h-3.5 text-red-400" />
+                                <ShieldAlert className="w-3.5 h-3.5" />
                                 <span>Configure API Key</span>
-                            </button>
+                            </Button>
                         )}
 
-                        <button
+                        <Button
+                            size="sm"
                             onClick={handleCommitToGitHub}
                             disabled={status.type === "loading"}
-                            className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-all shadow-md active:scale-95 disabled:opacity-50"
+                            className="bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs h-8 px-4 gap-2 shadow-sm"
                         >
                             {status.type === "loading" ? (
                                 <>
@@ -431,14 +438,14 @@ export default function AdminDashboard() {
                             ) : (
                                 <>
                                     <Save className="w-3.5 h-3.5" />
-                                    <span>Save & Commit to GitHub</span>
+                                    <span>Save & Commit</span>
                                 </>
                             )}
-                        </button>
+                        </Button>
                     </div>
                 </header>
 
-                {/* MAIN BODY DASHBOARD */}
+                {/* DASHBOARD BODY */}
                 <main className="p-6 flex flex-col gap-6 max-w-6xl w-full mx-auto">
                     {/* Status Alert Banner */}
                     {status.message && (
@@ -465,180 +472,182 @@ export default function AdminDashboard() {
                     {/* OVERVIEW SCREEN */}
                     {activeTab === "overview" && (
                         <div className="flex flex-col gap-6">
-                            {/* Security Notice Card */}
-                            <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                                <div className="flex items-start gap-3">
-                                    <div className="p-2.5 bg-blue-950 border border-blue-800 text-blue-400 rounded-lg shrink-0">
-                                        <Lock className="w-5 h-5" />
+                            <Card className="bg-slate-900 border-slate-800">
+                                <CardHeader className="flex flex-row items-center justify-between pb-3">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2.5 bg-blue-950 border border-blue-800 text-blue-400 rounded-lg">
+                                            <Lock className="w-5 h-5" />
+                                        </div>
+                                        <div>
+                                            <CardTitle className="text-sm font-semibold text-slate-100">🔒 Local Token Security & Privacy</CardTitle>
+                                            <CardDescription className="text-xs text-slate-400">
+                                                Your GitHub Personal Access Token is stored <strong>100% locally in your browser</strong> (`localStorage`).
+                                                Only your local device can push commits to your repository.
+                                            </CardDescription>
+                                        </div>
                                     </div>
-                                    <div className="flex flex-col gap-1">
-                                        <h3 className="text-sm font-semibold text-slate-100">🔒 Privacy & Access Control</h3>
-                                        <p className="text-xs text-slate-400 leading-relaxed max-w-2xl">
-                                            Your Personal Access Token is stored <strong>exclusively in your local browser storage</strong> (`localStorage`).
-                                            No unauthorized users can commit changes to your repository because only your local browser holds your secret API key.
-                                        </p>
-                                    </div>
-                                </div>
-                                <button
-                                    onClick={() => validateToken(token, repo)}
-                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-300 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg transition-colors whitespace-nowrap"
-                                >
-                                    <RefreshCw className="w-3.5 h-3.5" />
-                                    <span>Check Permissions</span>
-                                </button>
-                            </div>
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => validateToken(token, repo)}
+                                        className="border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs gap-1.5"
+                                    >
+                                        <RefreshCw className="w-3.5 h-3.5" />
+                                        <span>Check Token</span>
+                                    </Button>
+                                </CardHeader>
+                            </Card>
 
                             {/* Metrics Grid */}
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                                 {[
-                                    { label: "Total Projects", value: data.projects.length, sub: "Showcased items", icon: FolderKanban, tab: "projects" },
-                                    { label: "Experiences", value: data.experiences.length, sub: "Work & leadership", icon: Briefcase, tab: "experiences" },
-                                    { label: "Skill Groups", value: data.skillGroups.length, sub: `${data.skillGroups.reduce((a, b) => a + b.items.length, 0)} total tags`, icon: Wrench, tab: "skills" },
-                                    { label: "Languages", value: data.languages.length, sub: "Proficiency ratings", icon: Globe, tab: "languages" },
-                                ].map((card, i) => {
-                                    const Icon = card.icon;
+                                    { label: "Featured Projects", value: data.projects.length, sub: "Showcase items", icon: FolderKanban, tab: "projects" },
+                                    { label: "Work Experiences", value: data.experiences.length, sub: "Timeline roles", icon: Briefcase, tab: "experiences" },
+                                    { label: "Skill Categories", value: data.skillGroups.length, sub: `${data.skillGroups.reduce((a, b) => a + b.items.length, 0)} total tags`, icon: Wrench, tab: "skills" },
+                                    { label: "Languages", value: data.languages.length, sub: "Fluency ratings", icon: Globe, tab: "languages" },
+                                ].map((metric, i) => {
+                                    const Icon = metric.icon;
                                     return (
-                                        <div
+                                        <Card
                                             key={i}
-                                            onClick={() => setActiveTab(card.tab as typeof activeTab)}
-                                            className="bg-slate-900 border border-slate-800 hover:border-slate-700 p-5 rounded-xl flex flex-col gap-3 cursor-pointer transition-all hover:translate-y-[-2px]"
+                                            onClick={() => setActiveTab(metric.tab as typeof activeTab)}
+                                            className="bg-slate-900 border-slate-800 hover:border-slate-700 cursor-pointer transition-all hover:-translate-y-0.5"
                                         >
-                                            <div className="flex justify-between items-center text-slate-400">
-                                                <span className="text-xs font-medium">{card.label}</span>
+                                            <CardHeader className="flex flex-row items-center justify-between pb-2">
+                                                <CardTitle className="text-xs font-medium text-slate-400">{metric.label}</CardTitle>
                                                 <Icon className="w-4 h-4 text-blue-400" />
-                                            </div>
-                                            <div className="flex flex-col">
-                                                <span className="text-2xl font-bold text-slate-100">{card.value}</span>
-                                                <span className="text-[11px] text-slate-400">{card.sub}</span>
-                                            </div>
-                                        </div>
+                                            </CardHeader>
+                                            <CardContent className="flex flex-col gap-1">
+                                                <span className="text-2xl font-bold text-slate-100">{metric.value}</span>
+                                                <span className="text-[11px] text-slate-400">{metric.sub}</span>
+                                            </CardContent>
+                                        </Card>
                                     );
                                 })}
                             </div>
 
-                            {/* Quick Overview Table */}
-                            <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 flex flex-col gap-4">
-                                <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-                                    <h3 className="text-sm font-semibold text-slate-100">Live Featured Projects Overview</h3>
-                                    <button onClick={() => setActiveTab("projects")} className="text-xs text-blue-400 hover:underline">Manage All</button>
-                                </div>
-                                <div className="divide-y divide-slate-800">
+                            {/* Live Projects Table Overview */}
+                            <Card className="bg-slate-900 border-slate-800">
+                                <CardHeader className="flex flex-row items-center justify-between border-b border-slate-800 pb-3">
+                                    <div>
+                                        <CardTitle className="text-sm font-semibold text-slate-100">Live Featured Projects</CardTitle>
+                                        <CardDescription className="text-xs text-slate-400">Current active projects rendered on your portfolio</CardDescription>
+                                    </div>
+                                    <Button size="sm" variant="ghost" onClick={() => setActiveTab("projects")} className="text-xs text-blue-400 hover:text-blue-300">
+                                        Manage Projects →
+                                    </Button>
+                                </CardHeader>
+                                <CardContent className="divide-y divide-slate-800 pt-3">
                                     {data.projects.map((proj, idx) => (
                                         <div key={idx} className="py-3 flex items-center justify-between text-xs">
                                             <div className="flex items-center gap-3">
                                                 <span className="text-slate-500 font-mono">#{idx + 1}</span>
                                                 <span className="font-semibold text-slate-200">{proj.title}</span>
-                                                {proj.badge && <span className="bg-slate-800 text-slate-300 text-[10px] px-2 py-0.5 rounded-full border border-slate-700">{proj.badge}</span>}
+                                                {proj.badge && <Badge variant="secondary" className="text-[10px] py-0 px-2">{proj.badge}</Badge>}
                                             </div>
                                             <span className="text-slate-400 font-mono truncate max-w-xs">{proj.image}</span>
                                         </div>
                                     ))}
-                                </div>
-                            </div>
+                                </CardContent>
+                            </Card>
                         </div>
                     )}
 
-                    {/* API SETTINGS & VALIDATION TAB */}
+                    {/* API SETTINGS TAB */}
                     {activeTab === "settings" && (
                         <div className="flex flex-col gap-6 max-w-3xl">
-                            <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 flex flex-col gap-5">
-                                <div className="border-b border-slate-800 pb-3 flex justify-between items-center">
+                            <Card className="bg-slate-900 border-slate-800">
+                                <CardHeader className="border-b border-slate-800 pb-4 flex flex-row items-center justify-between">
                                     <div>
-                                        <h3 className="text-sm font-semibold text-slate-100">GitHub API Credentials & Validation</h3>
-                                        <p className="text-xs text-slate-400">Configure your Personal Access Token (PAT) and validate push access</p>
+                                        <CardTitle className="text-sm font-semibold text-slate-100">GitHub API Credentials & Validation</CardTitle>
+                                        <CardDescription className="text-xs text-slate-400">Validate Personal Access Token (PAT) and test push access</CardDescription>
                                     </div>
                                     {tokenValidation.status === "valid" ? (
-                                        <span className="inline-flex items-center gap-1.5 text-xs bg-emerald-950 text-emerald-400 border border-emerald-800 px-3 py-1 rounded-full font-medium">
-                                            <UserCheck className="w-3.5 h-3.5 text-emerald-400" />
-                                            <span>Access Granted</span>
-                                        </span>
+                                        <Badge variant="secondary" className="bg-emerald-950 text-emerald-400 border-emerald-800 text-xs py-1 px-3 gap-1">
+                                            <UserCheck className="w-3.5 h-3.5" />
+                                            <span>Validated</span>
+                                        </Badge>
                                     ) : (
-                                        <span className="inline-flex items-center gap-1.5 text-xs bg-red-950 text-red-400 border border-red-800 px-3 py-1 rounded-full font-medium">
-                                            <ShieldAlert className="w-3.5 h-3.5 text-red-400" />
+                                        <Badge variant="destructive" className="bg-red-950 text-red-400 border-red-800 text-xs py-1 px-3 gap-1">
+                                            <ShieldAlert className="w-3.5 h-3.5" />
                                             <span>Validation Required</span>
-                                        </span>
+                                        </Badge>
                                     )}
-                                </div>
+                                </CardHeader>
 
-                                {/* Validation Output Alert Box */}
-                                {tokenValidation.message && (
-                                    <div
-                                        className={`p-4 rounded-lg text-xs font-mono border flex items-start gap-2.5 ${tokenValidation.status === "valid"
-                                                ? "bg-emerald-950/60 border-emerald-800 text-emerald-300"
-                                                : tokenValidation.status === "testing"
-                                                    ? "bg-blue-950/60 border-blue-800 text-blue-300"
-                                                    : "bg-red-950/60 border-red-800 text-red-300"
-                                            }`}
-                                    >
-                                        {tokenValidation.status === "testing" && <Loader2 className="w-4 h-4 animate-spin shrink-0 text-blue-400" />}
-                                        {tokenValidation.status === "valid" && <ShieldCheck className="w-4 h-4 shrink-0 text-emerald-400" />}
-                                        {tokenValidation.status === "invalid" && <ShieldAlert className="w-4 h-4 shrink-0 text-red-400" />}
-                                        <div className="flex flex-col gap-1">
-                                            <span className="font-semibold">Validation Result:</span>
-                                            <span>{tokenValidation.message}</span>
+                                <CardContent className="flex flex-col gap-5 pt-5">
+                                    {tokenValidation.message && (
+                                        <div
+                                            className={`p-4 rounded-lg text-xs font-mono border flex items-start gap-2.5 ${tokenValidation.status === "valid"
+                                                    ? "bg-emerald-950/60 border-emerald-800 text-emerald-300"
+                                                    : tokenValidation.status === "testing"
+                                                        ? "bg-blue-950/60 border-blue-800 text-blue-300"
+                                                        : "bg-red-950/60 border-red-800 text-red-300"
+                                                }`}
+                                        >
+                                            {tokenValidation.status === "testing" && <Loader2 className="w-4 h-4 animate-spin shrink-0 text-blue-400" />}
+                                            {tokenValidation.status === "valid" && <ShieldCheck className="w-4 h-4 shrink-0 text-emerald-400" />}
+                                            {tokenValidation.status === "invalid" && <ShieldAlert className="w-4 h-4 shrink-0 text-red-400" />}
+                                            <div className="flex flex-col gap-1">
+                                                <span className="font-semibold">Validation Response:</span>
+                                                <span>{tokenValidation.message}</span>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div className="flex flex-col gap-4">
+                                        <div className="flex flex-col gap-1.5">
+                                            <label className="text-xs font-medium text-slate-300">Target Repository</label>
+                                            <Input
+                                                type="text"
+                                                value={repo}
+                                                onChange={(e) => setRepo(e.target.value)}
+                                                className="border-slate-700 bg-slate-950 text-slate-100 font-mono text-xs"
+                                                placeholder="rpiirmdhni/rpiirmdhni.github.io"
+                                            />
+                                        </div>
+
+                                        <div className="flex flex-col gap-1.5">
+                                            <label className="text-xs font-medium text-slate-300">Personal Access Token (PAT)</label>
+                                            <Input
+                                                type="password"
+                                                value={token}
+                                                onChange={(e) => setToken(e.target.value)}
+                                                className="border-slate-700 bg-slate-950 text-slate-100 font-mono text-xs"
+                                                placeholder="ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                                            />
+                                            <span className="text-[11px] text-slate-500">Requires `contents: write` or `repo` scope.</span>
                                         </div>
                                     </div>
-                                )}
 
-                                <div className="flex flex-col gap-4">
-                                    <div className="flex flex-col gap-1.5">
-                                        <label className="text-xs font-medium text-slate-300">Target Repository (owner/repo)</label>
-                                        <input
-                                            type="text"
-                                            value={repo}
-                                            onChange={(e) => setRepo(e.target.value)}
-                                            className="w-full text-xs border border-slate-700 p-2.5 rounded-lg bg-slate-950 text-slate-100 focus:outline-hidden focus:border-blue-500 font-mono"
-                                            placeholder="rpiirmdhni/rpiirmdhni.github.io"
-                                        />
+                                    <div className="flex items-center gap-3 pt-2">
+                                        <Button size="sm" onClick={handleSaveConfig} className="bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs gap-2">
+                                            <Key className="w-3.5 h-3.5" />
+                                            <span>Save & Test Token</span>
+                                        </Button>
+
+                                        {token && (
+                                            <Button size="sm" variant="outline" onClick={handleDisconnect} className="border-red-800 text-red-400 hover:bg-red-950 text-xs gap-1.5">
+                                                <LogOut className="w-3.5 h-3.5" />
+                                                <span>Clear Credentials</span>
+                                            </Button>
+                                        )}
                                     </div>
-
-                                    <div className="flex flex-col gap-1.5">
-                                        <label className="text-xs font-medium text-slate-300">Personal Access Token (PAT)</label>
-                                        <input
-                                            type="password"
-                                            value={token}
-                                            onChange={(e) => setToken(e.target.value)}
-                                            className="w-full text-xs border border-slate-700 p-2.5 rounded-lg bg-slate-950 text-slate-100 focus:outline-hidden focus:border-blue-500 font-mono"
-                                            placeholder="ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                                        />
-                                        <span className="text-[11px] text-slate-500">
-                                            Token requires `contents: write` or `repo` scope permissions.
-                                        </span>
-                                    </div>
-                                </div>
-
-                                <div className="flex items-center gap-3 pt-2">
-                                    <button
-                                        onClick={handleSaveConfig}
-                                        className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors"
-                                    >
-                                        <Key className="w-3.5 h-3.5" />
-                                        <span>Save & Test Token</span>
-                                    </button>
-
-                                    {token && (
-                                        <button
-                                            onClick={handleDisconnect}
-                                            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-red-400 hover:text-red-300 bg-red-950/40 border border-red-800/60 rounded-lg transition-colors"
-                                        >
-                                            <LogOut className="w-3.5 h-3.5" />
-                                            <span>Clear Saved Credentials</span>
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
+                                </CardContent>
+                            </Card>
                         </div>
                     )}
 
                     {/* PROJECTS TAB */}
                     {activeTab === "projects" && (
-                        <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 flex flex-col gap-6">
-                            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+                        <Card className="bg-slate-900 border-slate-800">
+                            <CardHeader className="flex flex-row items-center justify-between border-b border-slate-800 pb-4">
                                 <div>
-                                    <h3 className="text-sm font-semibold text-slate-100">Featured Projects ({data.projects.length})</h3>
-                                    <p className="text-xs text-slate-400">Manage showcase cards, upload images, and configure link actions</p>
+                                    <CardTitle className="text-sm font-semibold text-slate-100">Featured Projects ({data.projects.length})</CardTitle>
+                                    <CardDescription className="text-xs text-slate-400">Configure project cards, upload asset images, and link actions</CardDescription>
                                 </div>
-                                <button
+                                <Button
+                                    size="sm"
                                     onClick={() =>
                                         setData({
                                             ...data,
@@ -648,38 +657,40 @@ export default function AdminDashboard() {
                                             ],
                                         })
                                     }
-                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors"
+                                    className="bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold gap-1.5"
                                 >
                                     <Plus className="w-3.5 h-3.5" />
                                     <span>Add Project</span>
-                                </button>
-                            </div>
+                                </Button>
+                            </CardHeader>
 
-                            {imageUploadStatus && (
-                                <div className="text-xs text-blue-300 bg-blue-950/80 border border-blue-800 p-3 rounded-lg font-mono flex items-center gap-2">
-                                    <Upload className="w-4 h-4 text-blue-400" />
-                                    <span>{imageUploadStatus}</span>
-                                </div>
-                            )}
+                            <CardContent className="flex flex-col gap-6 pt-6">
+                                {imageUploadStatus && (
+                                    <div className="text-xs text-blue-300 bg-blue-950/80 border border-blue-800 p-3 rounded-lg font-mono flex items-center gap-2">
+                                        <Upload className="w-4 h-4 text-blue-400" />
+                                        <span>{imageUploadStatus}</span>
+                                    </div>
+                                )}
 
-                            <div className="flex flex-col gap-6">
                                 {data.projects.map((project, idx) => (
                                     <div key={idx} className="border border-slate-800 rounded-xl p-5 bg-slate-950/60 flex flex-col gap-4">
-                                        <div className="flex justify-between items-center border-b border-slate-800/80 pb-2">
+                                        <div className="flex justify-between items-center border-b border-slate-800 pb-2">
                                             <span className="text-xs font-mono font-bold text-slate-500">PROJECT #{idx + 1}</span>
-                                            <button
+                                            <Button
+                                                size="sm"
+                                                variant="ghost"
                                                 onClick={() => setData({ ...data, projects: data.projects.filter((_, i) => i !== idx) })}
-                                                className="inline-flex items-center gap-1 text-xs text-red-400 hover:text-red-300 font-medium"
+                                                className="text-xs text-red-400 hover:text-red-300 hover:bg-red-950/40 h-7 gap-1"
                                             >
                                                 <Trash2 className="w-3.5 h-3.5" />
                                                 <span>Delete</span>
-                                            </button>
+                                            </Button>
                                         </div>
 
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <div className="flex flex-col gap-1.5">
                                                 <label className="text-xs font-medium text-slate-300">Project Title</label>
-                                                <input
+                                                <Input
                                                     type="text"
                                                     value={project.title}
                                                     onChange={(e) => {
@@ -687,13 +698,13 @@ export default function AdminDashboard() {
                                                         copy[idx].title = e.target.value;
                                                         setData({ ...data, projects: copy });
                                                     }}
-                                                    className="w-full text-xs border border-slate-700 p-2.5 rounded-lg bg-slate-900 text-slate-100"
+                                                    className="border-slate-700 bg-slate-900 text-slate-100 text-xs"
                                                 />
                                             </div>
 
                                             <div className="flex flex-col gap-1.5">
                                                 <label className="text-xs font-medium text-slate-300">Badge Tag (Optional)</label>
-                                                <input
+                                                <Input
                                                     type="text"
                                                     value={project.badge || ""}
                                                     onChange={(e) => {
@@ -701,7 +712,7 @@ export default function AdminDashboard() {
                                                         copy[idx].badge = e.target.value || undefined;
                                                         setData({ ...data, projects: copy });
                                                     }}
-                                                    className="w-full text-xs border border-slate-700 p-2.5 rounded-lg bg-slate-900 text-slate-100"
+                                                    className="border-slate-700 bg-slate-900 text-slate-100 text-xs"
                                                     placeholder="e.g. Private"
                                                 />
                                             </div>
@@ -710,7 +721,7 @@ export default function AdminDashboard() {
                                         <div className="flex flex-col gap-1.5">
                                             <label className="text-xs font-medium text-slate-300">Image Asset Path / Upload</label>
                                             <div className="flex gap-2 items-center">
-                                                <input
+                                                <Input
                                                     type="text"
                                                     value={project.image}
                                                     onChange={(e) => {
@@ -718,7 +729,7 @@ export default function AdminDashboard() {
                                                         copy[idx].image = e.target.value;
                                                         setData({ ...data, projects: copy });
                                                     }}
-                                                    className="w-full text-xs border border-slate-700 p-2.5 rounded-lg bg-slate-900 text-slate-100 font-mono"
+                                                    className="border-slate-700 bg-slate-900 text-slate-100 font-mono text-xs"
                                                 />
                                                 <label className="cursor-pointer inline-flex items-center gap-1.5 px-3.5 py-2.5 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg transition-colors whitespace-nowrap">
                                                     <Upload className="w-3.5 h-3.5" />
@@ -760,17 +771,19 @@ export default function AdminDashboard() {
                                         <div className="flex flex-col gap-2 pt-3 border-t border-slate-800">
                                             <div className="flex justify-between items-center">
                                                 <label className="text-xs font-semibold text-slate-300">Action Button Links</label>
-                                                <button
+                                                <Button
+                                                    size="sm"
+                                                    variant="ghost"
                                                     onClick={() => {
                                                         const copy = [...data.projects];
                                                         copy[idx].links = [...(copy[idx].links || []), { type: "github", href: "", label: "View Link" }];
                                                         setData({ ...data, projects: copy });
                                                     }}
-                                                    className="inline-flex items-center gap-1 text-xs text-blue-400 font-medium hover:underline"
+                                                    className="text-xs text-blue-400 hover:text-blue-300 font-medium h-7 gap-1"
                                                 >
                                                     <Plus className="w-3.5 h-3.5" />
                                                     <span>Add Link</span>
-                                                </button>
+                                                </Button>
                                             </div>
 
                                             {project.links?.map((link, lIdx) => (
@@ -788,7 +801,7 @@ export default function AdminDashboard() {
                                                         <option value="npm">NPM</option>
                                                         <option value="figma">Figma</option>
                                                     </select>
-                                                    <input
+                                                    <Input
                                                         type="text"
                                                         value={link.label}
                                                         onChange={(e) => {
@@ -797,9 +810,9 @@ export default function AdminDashboard() {
                                                             setData({ ...data, projects: copy });
                                                         }}
                                                         placeholder="Button Label"
-                                                        className="text-xs border border-slate-700 p-2 rounded-lg bg-slate-900 text-slate-100 w-1/3"
+                                                        className="border-slate-700 bg-slate-900 text-slate-100 text-xs w-1/3"
                                                     />
-                                                    <input
+                                                    <Input
                                                         type="text"
                                                         value={link.href}
                                                         onChange={(e) => {
@@ -808,7 +821,7 @@ export default function AdminDashboard() {
                                                             setData({ ...data, projects: copy });
                                                         }}
                                                         placeholder="URL"
-                                                        className="text-xs border border-slate-700 p-2 rounded-lg bg-slate-900 text-slate-100 w-full font-mono"
+                                                        className="border-slate-700 bg-slate-900 text-slate-100 font-mono text-xs w-full"
                                                     />
                                                     <button
                                                         onClick={() => {
@@ -825,48 +838,51 @@ export default function AdminDashboard() {
                                         </div>
                                     </div>
                                 ))}
-                            </div>
-                        </div>
+                            </CardContent>
+                        </Card>
                     )}
 
                     {/* EXPERIENCES TAB */}
                     {activeTab === "experiences" && (
-                        <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 flex flex-col gap-6">
-                            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+                        <Card className="bg-slate-900 border-slate-800">
+                            <CardHeader className="flex flex-row items-center justify-between border-b border-slate-800 pb-4">
                                 <div>
-                                    <h3 className="text-sm font-semibold text-slate-100">Work & Leadership Experiences</h3>
-                                    <p className="text-xs text-slate-400">Timeline of professional experience, founder roles and memberships</p>
+                                    <CardTitle className="text-sm font-semibold text-slate-100">Work & Leadership Experiences ({data.experiences.length})</CardTitle>
+                                    <CardDescription className="text-xs text-slate-400">Timeline of professional roles and memberships</CardDescription>
                                 </div>
-                                <button
+                                <Button
+                                    size="sm"
                                     onClick={() =>
                                         setData({
                                             ...data,
                                             experiences: [{ period: "2026 - Present", title: "New Role", organization: "Organization Name", current: true }, ...data.experiences],
                                         })
                                     }
-                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors"
+                                    className="bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold gap-1.5"
                                 >
                                     <Plus className="w-3.5 h-3.5" />
                                     <span>Add Experience</span>
-                                </button>
-                            </div>
+                                </Button>
+                            </CardHeader>
 
-                            <div className="flex flex-col gap-4">
+                            <CardContent className="flex flex-col gap-4 pt-6">
                                 {data.experiences.map((exp, idx) => (
                                     <div key={idx} className="border border-slate-800 rounded-xl p-4 bg-slate-950/60 flex flex-col gap-3">
                                         <div className="flex justify-between items-center">
                                             <span className="text-xs font-mono font-bold text-slate-500">ENTRY #{idx + 1}</span>
-                                            <button
+                                            <Button
+                                                size="sm"
+                                                variant="ghost"
                                                 onClick={() => setData({ ...data, experiences: data.experiences.filter((_, i) => i !== idx) })}
-                                                className="inline-flex items-center gap-1 text-xs text-red-400 hover:text-red-300 font-medium"
+                                                className="text-xs text-red-400 hover:text-red-300 hover:bg-red-950/40 h-7 gap-1"
                                             >
                                                 <Trash2 className="w-3.5 h-3.5" />
                                                 <span>Delete</span>
-                                            </button>
+                                            </Button>
                                         </div>
 
                                         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                                            <input
+                                            <Input
                                                 type="text"
                                                 value={exp.period}
                                                 onChange={(e) => {
@@ -875,9 +891,9 @@ export default function AdminDashboard() {
                                                     setData({ ...data, experiences: copy });
                                                 }}
                                                 placeholder="Period"
-                                                className="text-xs border border-slate-700 p-2 rounded-lg bg-slate-900 text-slate-100"
+                                                className="border-slate-700 bg-slate-900 text-slate-100 text-xs"
                                             />
-                                            <input
+                                            <Input
                                                 type="text"
                                                 value={exp.title}
                                                 onChange={(e) => {
@@ -886,9 +902,9 @@ export default function AdminDashboard() {
                                                     setData({ ...data, experiences: copy });
                                                 }}
                                                 placeholder="Role / Title"
-                                                className="text-xs border border-slate-700 p-2 rounded-lg bg-slate-900 text-slate-100"
+                                                className="border-slate-700 bg-slate-900 text-slate-100 text-xs"
                                             />
-                                            <input
+                                            <Input
                                                 type="text"
                                                 value={exp.organization}
                                                 onChange={(e) => {
@@ -897,9 +913,9 @@ export default function AdminDashboard() {
                                                     setData({ ...data, experiences: copy });
                                                 }}
                                                 placeholder="Organization"
-                                                className="text-xs border border-slate-700 p-2 rounded-lg bg-slate-900 text-slate-100"
+                                                className="border-slate-700 bg-slate-900 text-slate-100 text-xs"
                                             />
-                                            <input
+                                            <Input
                                                 type="text"
                                                 value={exp.badge || ""}
                                                 onChange={(e) => {
@@ -908,7 +924,7 @@ export default function AdminDashboard() {
                                                     setData({ ...data, experiences: copy });
                                                 }}
                                                 placeholder="Badge (e.g. Freelance)"
-                                                className="text-xs border border-slate-700 p-2 rounded-lg bg-slate-900 text-slate-100"
+                                                className="border-slate-700 bg-slate-900 text-slate-100 text-xs"
                                             />
                                         </div>
 
@@ -927,48 +943,51 @@ export default function AdminDashboard() {
                                         </label>
                                     </div>
                                 ))}
-                            </div>
-                        </div>
+                            </CardContent>
+                        </Card>
                     )}
 
                     {/* EDUCATIONS TAB */}
                     {activeTab === "educations" && (
-                        <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 flex flex-col gap-6">
-                            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+                        <Card className="bg-slate-900 border-slate-800">
+                            <CardHeader className="flex flex-row items-center justify-between border-b border-slate-800 pb-4">
                                 <div>
-                                    <h3 className="text-sm font-semibold text-slate-100">Education Timeline</h3>
-                                    <p className="text-xs text-slate-400">Academic institutions and degree programs</p>
+                                    <CardTitle className="text-sm font-semibold text-slate-100">Education Timeline ({data.educations.length})</CardTitle>
+                                    <CardDescription className="text-xs text-slate-400">Academic institutions and degrees</CardDescription>
                                 </div>
-                                <button
+                                <Button
+                                    size="sm"
                                     onClick={() =>
                                         setData({
                                             ...data,
                                             educations: [{ period: "2026 - Present", title: "Field of Study", organization: "Institution Name", current: true }, ...data.educations],
                                         })
                                     }
-                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors"
+                                    className="bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold gap-1.5"
                                 >
                                     <Plus className="w-3.5 h-3.5" />
                                     <span>Add Education</span>
-                                </button>
-                            </div>
+                                </Button>
+                            </CardHeader>
 
-                            <div className="flex flex-col gap-4">
+                            <CardContent className="flex flex-col gap-4 pt-6">
                                 {data.educations.map((edu, idx) => (
                                     <div key={idx} className="border border-slate-800 rounded-xl p-4 bg-slate-950/60 flex flex-col gap-3">
                                         <div className="flex justify-between items-center">
                                             <span className="text-xs font-mono font-bold text-slate-500">ENTRY #{idx + 1}</span>
-                                            <button
+                                            <Button
+                                                size="sm"
+                                                variant="ghost"
                                                 onClick={() => setData({ ...data, educations: data.educations.filter((_, i) => i !== idx) })}
-                                                className="inline-flex items-center gap-1 text-xs text-red-400 hover:text-red-300 font-medium"
+                                                className="text-xs text-red-400 hover:text-red-300 hover:bg-red-950/40 h-7 gap-1"
                                             >
                                                 <Trash2 className="w-3.5 h-3.5" />
                                                 <span>Delete</span>
-                                            </button>
+                                            </Button>
                                         </div>
 
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                            <input
+                                            <Input
                                                 type="text"
                                                 value={edu.period}
                                                 onChange={(e) => {
@@ -977,9 +996,9 @@ export default function AdminDashboard() {
                                                     setData({ ...data, educations: copy });
                                                 }}
                                                 placeholder="Period"
-                                                className="text-xs border border-slate-700 p-2 rounded-lg bg-slate-900 text-slate-100"
+                                                className="border-slate-700 bg-slate-900 text-slate-100 text-xs"
                                             />
-                                            <input
+                                            <Input
                                                 type="text"
                                                 value={edu.title}
                                                 onChange={(e) => {
@@ -988,9 +1007,9 @@ export default function AdminDashboard() {
                                                     setData({ ...data, educations: copy });
                                                 }}
                                                 placeholder="Major / Field of Study"
-                                                className="text-xs border border-slate-700 p-2 rounded-lg bg-slate-900 text-slate-100"
+                                                className="border-slate-700 bg-slate-900 text-slate-100 text-xs"
                                             />
-                                            <input
+                                            <Input
                                                 type="text"
                                                 value={edu.organization}
                                                 onChange={(e) => {
@@ -999,7 +1018,7 @@ export default function AdminDashboard() {
                                                     setData({ ...data, educations: copy });
                                                 }}
                                                 placeholder="School / University"
-                                                className="text-xs border border-slate-700 p-2 rounded-lg bg-slate-900 text-slate-100"
+                                                className="border-slate-700 bg-slate-900 text-slate-100 text-xs"
                                             />
                                         </div>
 
@@ -1018,32 +1037,33 @@ export default function AdminDashboard() {
                                         </label>
                                     </div>
                                 ))}
-                            </div>
-                        </div>
+                            </CardContent>
+                        </Card>
                     )}
 
                     {/* SKILLS TAB */}
                     {activeTab === "skills" && (
-                        <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 flex flex-col gap-6">
-                            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+                        <Card className="bg-slate-900 border-slate-800">
+                            <CardHeader className="flex flex-row items-center justify-between border-b border-slate-800 pb-4">
                                 <div>
-                                    <h3 className="text-sm font-semibold text-slate-100">Technical & Soft Skill Categories</h3>
-                                    <p className="text-xs text-slate-400">Group skills by category title and comma-separated tags</p>
+                                    <CardTitle className="text-sm font-semibold text-slate-100">Technical & Soft Skill Groups ({data.skillGroups.length})</CardTitle>
+                                    <CardDescription className="text-xs text-slate-400">Group skills by categories and comma-separated tags</CardDescription>
                                 </div>
-                                <button
+                                <Button
+                                    size="sm"
                                     onClick={() => setData({ ...data, skillGroups: [...data.skillGroups, { title: "New Category", items: ["Skill Item"] }] })}
-                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors"
+                                    className="bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold gap-1.5"
                                 >
                                     <Plus className="w-3.5 h-3.5" />
                                     <span>Add Category</span>
-                                </button>
-                            </div>
+                                </Button>
+                            </CardHeader>
 
-                            <div className="flex flex-col gap-6">
+                            <CardContent className="flex flex-col gap-6 pt-6">
                                 {data.skillGroups.map((group, sIdx) => (
                                     <div key={sIdx} className="border border-slate-800 rounded-xl p-4 bg-slate-950/60 flex flex-col gap-3">
                                         <div className="flex justify-between items-center">
-                                            <input
+                                            <Input
                                                 type="text"
                                                 value={group.title}
                                                 onChange={(e) => {
@@ -1051,15 +1071,17 @@ export default function AdminDashboard() {
                                                     copy[sIdx].title = e.target.value;
                                                     setData({ ...data, skillGroups: copy });
                                                 }}
-                                                className="text-xs font-bold border border-slate-700 p-2 rounded-lg bg-slate-900 text-slate-100 w-60"
+                                                className="border-slate-700 bg-slate-900 text-slate-100 font-bold text-xs w-60"
                                             />
-                                            <button
+                                            <Button
+                                                size="sm"
+                                                variant="ghost"
                                                 onClick={() => setData({ ...data, skillGroups: data.skillGroups.filter((_, i) => i !== sIdx) })}
-                                                className="inline-flex items-center gap-1 text-xs text-red-400 hover:text-red-300 font-medium"
+                                                className="text-xs text-red-400 hover:text-red-300 hover:bg-red-950/40 h-7 gap-1"
                                             >
                                                 <Trash2 className="w-3.5 h-3.5" />
                                                 <span>Delete Category</span>
-                                            </button>
+                                            </Button>
                                         </div>
 
                                         <div className="flex flex-col gap-1.5">
@@ -1077,31 +1099,32 @@ export default function AdminDashboard() {
                                         </div>
                                     </div>
                                 ))}
-                            </div>
-                        </div>
+                            </CardContent>
+                        </Card>
                     )}
 
                     {/* LANGUAGES TAB */}
                     {activeTab === "languages" && (
-                        <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 flex flex-col gap-6">
-                            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+                        <Card className="bg-slate-900 border-slate-800">
+                            <CardHeader className="flex flex-row items-center justify-between border-b border-slate-800 pb-4">
                                 <div>
-                                    <h3 className="text-sm font-semibold text-slate-100">Languages & Fluency</h3>
-                                    <p className="text-xs text-slate-400">Language ratings and progress bar percentages</p>
+                                    <CardTitle className="text-sm font-semibold text-slate-100">Languages & Fluency ({data.languages.length})</CardTitle>
+                                    <CardDescription className="text-xs text-slate-400">Language fluency and progress bar percentages</CardDescription>
                                 </div>
-                                <button
+                                <Button
+                                    size="sm"
                                     onClick={() => setData({ ...data, languages: [...data.languages, { name: "Language", level: "Proficiency Level", percent: 80 }] })}
-                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors"
+                                    className="bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold gap-1.5"
                                 >
                                     <Plus className="w-3.5 h-3.5" />
                                     <span>Add Language</span>
-                                </button>
-                            </div>
+                                </Button>
+                            </CardHeader>
 
-                            <div className="flex flex-col gap-4">
+                            <CardContent className="flex flex-col gap-4 pt-6">
                                 {data.languages.map((lang, idx) => (
                                     <div key={idx} className="border border-slate-800 rounded-xl p-4 bg-slate-950/60 flex items-center gap-3">
-                                        <input
+                                        <Input
                                             type="text"
                                             value={lang.name}
                                             onChange={(e) => {
@@ -1110,9 +1133,9 @@ export default function AdminDashboard() {
                                                 setData({ ...data, languages: copy });
                                             }}
                                             placeholder="Language"
-                                            className="text-xs border border-slate-700 p-2.5 rounded-lg bg-slate-900 text-slate-100 w-1/4"
+                                            className="border-slate-700 bg-slate-900 text-slate-100 text-xs w-1/4"
                                         />
-                                        <input
+                                        <Input
                                             type="text"
                                             value={lang.level}
                                             onChange={(e) => {
@@ -1121,10 +1144,10 @@ export default function AdminDashboard() {
                                                 setData({ ...data, languages: copy });
                                             }}
                                             placeholder="Level Description"
-                                            className="text-xs border border-slate-700 p-2.5 rounded-lg bg-slate-900 text-slate-100 w-1/2"
+                                            className="border-slate-700 bg-slate-900 text-slate-100 text-xs w-1/2"
                                         />
                                         <div className="flex items-center gap-1 w-1/4">
-                                            <input
+                                            <Input
                                                 type="number"
                                                 min={0}
                                                 max={100}
@@ -1134,7 +1157,7 @@ export default function AdminDashboard() {
                                                     copy[idx].percent = Number(e.target.value);
                                                     setData({ ...data, languages: copy });
                                                 }}
-                                                className="text-xs border border-slate-700 p-2.5 rounded-lg bg-slate-900 text-slate-100 w-full font-mono"
+                                                className="border-slate-700 bg-slate-900 text-slate-100 font-mono text-xs w-full"
                                             />
                                             <span className="text-xs font-semibold text-slate-500">%</span>
                                         </div>
@@ -1146,55 +1169,57 @@ export default function AdminDashboard() {
                                         </button>
                                     </div>
                                 ))}
-                            </div>
-                        </div>
+                            </CardContent>
+                        </Card>
                     )}
 
                     {/* STATS TAB */}
                     {activeTab === "stats" && (
-                        <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 flex flex-col gap-6">
-                            <div className="border-b border-slate-800 pb-4">
-                                <h3 className="text-sm font-semibold text-slate-100">About Me Stat Cards</h3>
-                                <p className="text-xs text-slate-400">Edit values and labels for the three main stats cards</p>
-                            </div>
+                        <Card className="bg-slate-900 border-slate-800">
+                            <CardHeader className="border-b border-slate-800 pb-4">
+                                <CardTitle className="text-sm font-semibold text-slate-100">About Me Stat Cards</CardTitle>
+                                <CardDescription className="text-xs text-slate-400">Values and subtext labels for the three main stats cards</CardDescription>
+                            </CardHeader>
 
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                {data.aboutStats.map((stat, idx) => (
-                                    <div key={idx} className="border border-slate-800 rounded-xl p-4 bg-slate-950/60 flex flex-col gap-3">
-                                        <span className="text-xs font-mono font-bold text-slate-500">METRIC #{idx + 1}</span>
-                                        <div className="flex flex-col gap-1.5">
-                                            <label className="text-xs font-medium text-slate-300">Display Value</label>
-                                            <input
-                                                type="text"
-                                                value={stat.value}
-                                                onChange={(e) => {
-                                                    const copy = [...data.aboutStats];
-                                                    copy[idx].value = e.target.value;
-                                                    setData({ ...data, aboutStats: copy });
-                                                }}
-                                                placeholder="e.g. 19"
-                                                className="text-xs font-bold border border-slate-700 p-2.5 rounded-lg bg-slate-900 text-slate-100"
-                                            />
-                                        </div>
+                            <CardContent className="pt-6">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    {data.aboutStats.map((stat, idx) => (
+                                        <div key={idx} className="border border-slate-800 rounded-xl p-4 bg-slate-950/60 flex flex-col gap-3">
+                                            <span className="text-xs font-mono font-bold text-slate-500">METRIC #{idx + 1}</span>
+                                            <div className="flex flex-col gap-1.5">
+                                                <label className="text-xs font-medium text-slate-300">Display Value</label>
+                                                <Input
+                                                    type="text"
+                                                    value={stat.value}
+                                                    onChange={(e) => {
+                                                        const copy = [...data.aboutStats];
+                                                        copy[idx].value = e.target.value;
+                                                        setData({ ...data, aboutStats: copy });
+                                                    }}
+                                                    placeholder="e.g. 19"
+                                                    className="border-slate-700 bg-slate-900 text-slate-100 font-bold text-xs"
+                                                />
+                                            </div>
 
-                                        <div className="flex flex-col gap-1.5">
-                                            <label className="text-xs font-medium text-slate-300">Label Subtext</label>
-                                            <input
-                                                type="text"
-                                                value={stat.label}
-                                                onChange={(e) => {
-                                                    const copy = [...data.aboutStats];
-                                                    copy[idx].label = e.target.value;
-                                                    setData({ ...data, aboutStats: copy });
-                                                }}
-                                                placeholder="e.g. Years Old"
-                                                className="text-xs border border-slate-700 p-2.5 rounded-lg bg-slate-900 text-slate-100"
-                                            />
+                                            <div className="flex flex-col gap-1.5">
+                                                <label className="text-xs font-medium text-slate-300">Subtext Label</label>
+                                                <Input
+                                                    type="text"
+                                                    value={stat.label}
+                                                    onChange={(e) => {
+                                                        const copy = [...data.aboutStats];
+                                                        copy[idx].label = e.target.value;
+                                                        setData({ ...data, aboutStats: copy });
+                                                    }}
+                                                    placeholder="e.g. Years Old"
+                                                    className="border-slate-700 bg-slate-900 text-slate-100 text-xs"
+                                                />
+                                            </div>
                                         </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
+                                    ))}
+                                </div>
+                            </CardContent>
+                        </Card>
                     )}
                 </main>
             </div>
