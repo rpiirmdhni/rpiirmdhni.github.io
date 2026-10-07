@@ -238,15 +238,29 @@ export default function AdminDashboard() {
             return alert("Invalid file type. Only JPEG, PNG, WEBP, GIF, and SVG images are allowed.");
         }
 
-        setImageUploadStatus(`Uploading ${file.name}...`);
+        // Custom File Renaming Prompt
+        const extMatch = file.name.match(/\.[0-9a-z]+$/i);
+        const originalExt = extMatch ? extMatch[0].toLowerCase() : ".png";
+        const defaultName = file.name.replace(/\.[0-9a-z]+$/i, "");
+
+        const userInput = prompt("Enter target filename for uploaded image:", defaultName);
+        if (userInput === null) return; // User cancelled upload
+
+        let targetName = userInput.trim() ? userInput.trim() : defaultName;
+        if (!targetName.toLowerCase().endsWith(originalExt)) {
+            targetName += originalExt;
+        }
+
+        const cleanFileName = targetName.toLowerCase().replace(/[^a-z0-9._-]/g, "-");
+        const path = `public/assets/img/projects/${cleanFileName}`;
+
+        setImageUploadStatus(`Uploading ${cleanFileName}...`);
 
         try {
             const reader = new FileReader();
             reader.readAsDataURL(file);
             reader.onload = async () => {
                 const base64Data = (reader.result as string).split(",")[1];
-                const cleanFileName = file.name.toLowerCase().replace(/[^a-z0-9._-]/g, "-");
-                const path = `public/assets/img/projects/${cleanFileName}`;
 
                 let sha: string | undefined;
                 try {
